@@ -1,0 +1,103 @@
+{### Builds validation for base.yml and fabric.yml. Block inherits from svc_tnt_val_tmpl.j2 ###}
+
+{# Macro needed as using the same block more than once #}
+{%- macro macro_get_bgp_neighbors() -%}
+{% block get_bgp_neighbors %}{% endblock %}
+{%- endmacro -%}
+
+{# Macro as creating interface validation use the same code each time #}
+{%- macro macro_get_lldp_neighbors(intf, descr) -%}
+    {{ intf }}:
+      - hostname: {{ descr.split(' ')[2] + '.' + bse.services.domain }}
+        port: {{ fbc.adv.bse_intf.intf_fmt + (descr.split(' ')[4] | replace(fbc.adv.bse_intf.intf_short, '')) }}
+{%- endmacro -%}
+
+
+{## Checks that the hostname is correct ##}
+- get_facts:
+    hostname: {{ inventory_hostname }}
+
+
+{## Checks LLDP to ensure fabric and MLAG physical connections are correct (uses macro) ##}
+- get_lldp_neighbors:
+{% for intf, descr in intf_fbc.items() %}
+    {{ macro_get_lldp_neighbors(intf, descr) }}
+{% endfor %}
+{% if intf_mlag_peer is defined %}{% for intf, descr in intf_mlag_peer.items() %}
+{% if fbc.adv.bse_intf.mlag_fmt not in intf %}
+    {{ macro_get_lldp_neighbors(intf, descr) }}
+{% endif %}
+{% endfor %}{% endif %}
+{% if intf_mlag_kalive is defined %}{% for intf, descr in intf_mlag_kalive.items() %}
+    {{ macro_get_lldp_neighbors(intf, descr) }}
+{% endfor %}{% endif %}
+
+
+{## Checks that the overlay BGP neighbors are up  ##}
+- get_bgp_neighbors:
+    global:
+      router_id: {{ intf_lp[0].ip |ipaddr('address')  }}
+      peers:
+        _mode: strict
+{% if bse.device_name.spine in inventory_hostname %}
+{% for x in groups[bse.device_name.leaf.split('-')[-1].lower()] + groups[bse.device_name.border.split('-')[-1].lower()] %}
+        {{ hostvars[x].intf_lp[0].ip |ipaddr('address') }}:
+          is_enabled: true
+          is_up: true
+{# Conditionally adds (inherits) prefix sent/rcv validation from svc_tnt_val_tmpl.j2  #}
+{{ macro_get_bgp_neighbors() }}
+{% endfor %}{% else %}
+{% for x in groups[bse.device_name.spine.split('-')[-1].lower()] %}
+        {{ hostvars[x].intf_lp[0].ip |ipaddr('address') }}:
+          is_enabled: true
+          is_up: true
+{{ macro_get_bgp_neighbors() }}
+{% endfor %}{% endif %}
+{% block get_bgp_neighbors_ipv4_global %}
+{% endblock %}
+
+
+{# Tenant VRF BGP neighbors - Inherited #}
+{% block get_bgp_neighbors_vrf %}
+{% endblock %}
+
+
+{## ping: Gets all loopback addresses from host_vars. Disabled as takes too long ##}
+{# {% for x in groups['all'] %}
+- ping:
+    _name: ping RTR loopback {{ x }}
+    _kwargs:
+      destination: {{ hostvars[x].intf_lp[0].ip |ipaddr('address') }}
+      count: 3
+    success:
+      packet_loss: 0
+    _mode: strict
+{% endfor %}
+{% for x in groups[bse.device_name.leaf.split('-')[-1].lower()] + groups[bse.device_name.border.split('-')[-1].lower()] %}
+- ping:
+    _name: ping VTEP loopback {{ x }}
+    _kwargs:
+      destination: {{ hostvars[x].intf_lp[1].ip |ipaddr('address') }}
+      count: 3
+    success:
+      packet_loss: 0
+    _mode: strict
+- ping:
+    _name: ping MLAG loopback {{ x }}
+    _kwargs:
+      destination: {{ hostvars[x].intf_lp[1].mlag_lp_addr |ipaddr('address') }}
+      count: 3
+    success:
+      packet_loss: 0
+    _mode: strict
+{% endfor %}
+{% for x in groups['border'] %}
+- ping:
+    _name: ping BGW loopback: {{ x }}
+    _kwargs:
+      destination: {{ hostvars[x].intf_lp[2].ip |ipaddr('address') }}
+      count: 3
+    success:
+      packet_loss: 0
+    _mode: strict
+{% endfor %} #}

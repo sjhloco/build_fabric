@@ -1,0 +1,1 @@
+{"complies": true, "skipped": [], "show bgp vrf all ipv4 unicast": {"complies": true, "present": {"11.1.1.0/28": {"complies": true, "nested": true}, "22.2.2.0/28": {"complies": true, "nested": true}, "44.4.4.0/28": {"complies": true, "nested": true}, "22.2.2.0/27": {"complies": true, "nested": true}}, "missing": [], "extra": []}}

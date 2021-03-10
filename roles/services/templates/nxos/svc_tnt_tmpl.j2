@@ -1,0 +1,87 @@
+{#### Logic to decide which set of variables to render dependant on device-role ####}
+{% if bse.device_name.leaf in inventory_hostname %}{% set flt_vars = flt_svc_tnt[0] %}
+{% elif bse.device_name.border in inventory_hostname %}{% set flt_vars = flt_svc_tnt[1] %}
+{% endif %}
+
+{#### VRF: All VRFs are created even if it is not a L3_tenant ####}
+{% for flt_tnt in flt_vars %}
+vrf context {{ flt_tnt.tnt_name }}
+  vni {{ flt_tnt.l3vni }}
+  rd auto
+  address-family ipv4 unicast
+    route-target both auto
+    route-target both auto evpn
+{% endfor %}
+
+{#### VLANs: If non-VXLAN doesnt add 'vn-segment', if L3_tenant creates all L2 and L3 VLANs, if not doesnt create the L3VNI VLAN ####}
+spanning-tree vlan 1-3967 priority 0
+{% for flt_tnt in flt_vars %}{% for vl in flt_tnt.vlans %}
+{% if vl.vxlan is sameas false %}
+vlan {{ vl.num }}
+  name {{ vl.name }}
+{% elif flt_tnt.l3_tnt is sameas true %}
+vlan {{ vl.num }}
+  name {{ vl.name }}
+  vn-segment {{ vl.vni }}
+{% elif vl.vni != flt_tnt.l3vni %}
+vlan {{ vl.num }}
+  name {{ vl.name }}
+  vn-segment {{ vl.vni }}
+{% endif %}
+{% endfor %}{% endfor %}
+
+{#### SVIs - IP assigned depends whether it is a L3VNI, SVI or redistributed SVI (adds a tag) ####}
+{% for flt_tnt in flt_vars %}{% if flt_tnt.l3_tnt is sameas true %}
+{% for vl in flt_tnt.vlans %}{% if vl.ip_addr != None %}
+interface vlan{{ vl.num }}
+  no shutdown
+  vrf member {{ flt_tnt.tnt_name }}
+  no ip redirects
+  no ipv6 redirects
+{% if vl.ip_addr == 'l3_vni' %}
+  ip forward
+{% elif vl.ipv4_bgp_redist is sameas true %}
+  ip address {{ vl.ip_addr }} tag {{ flt_tnt.bgp_redist_tag }}
+  fabric forwarding mode anycast-gateway
+{% else %}
+  ip address {{ vl.ip_addr }}
+  fabric forwarding mode anycast-gateway
+{% endif %}
+{% endif %}{% endfor %}
+{% endif %}{% endfor %}
+
+{#### VXLAN: Add L2VNI (if vlan number is not L3VNI vlan) or associate L3VNI (if L3_tenant) to NVE interface ####}
+interface nve1
+{% for flt_tnt in flt_vars %}{% if flt_tnt.l3_tnt is sameas true %}
+  member vni {{ flt_tnt.l3vni }} associate-vrf
+{% endif %}
+{% for vl in flt_tnt.vlans %}
+{% if vl.num != flt_tnt.tnt_vlan and vl.vxlan is sameas true %}
+  member vni {{ vl.vni }}
+{% endif %}{% endfor %}
+{% endfor %}
+
+{#### EVPN: Create for all vlans except the L3VNI vlan ####}
+evpn
+{% for flt_tnt in flt_vars %}{% for vl in flt_tnt.vlans %}
+{% if vl.num != flt_tnt.tnt_vlan and vl.vxlan is sameas true %}
+  vni {{ vl.vni }} l2
+    rd auto
+    route-target import auto
+    route-target export auto
+{% endif %}
+{% endfor %}{% endfor %}
+
+{#### BGP_REDIST: Only applies if it is a L3_tenant. RM always created and applied, however the match statement is dependant on ipv4_bgp_redist ####}
+{% for flt_tnt in flt_vars %}{% if flt_tnt.l3_tnt is sameas true %}
+route-map {{ flt_tnt.rm_name }} permit 10
+  match tag {{ flt_tnt.bgp_redist_tag }}
+{% endif %}{% endfor %}
+
+router bgp {{ fbc.route.bgp.as_num }}
+{% for flt_tnt in flt_vars %}{% if flt_tnt.l3_tnt is sameas true %}
+  vrf {{ flt_tnt.tnt_name }}
+    address-family ipv4 unicast
+      advertise l2vpn evpn
+      redistribute direct route-map {{ flt_tnt.rm_name }}
+{% endif %}{% endfor %}

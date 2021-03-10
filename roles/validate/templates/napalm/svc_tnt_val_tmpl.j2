@@ -1,0 +1,19 @@
+{### Validates Tenant prefixes are beign advertised by BGP ###}
+
+{# Adds the results of this rendered file into the bse_fbc_val_tmpl file #}
+{% extends "napalm/bse_fbc_val_tmpl.j2" %}
+
+{# Adds to the bse_fbc_val_tmpl.j2 BGP validation, validates at least 1 prefix sent/received #}
+{% block get_bgp_neighbors %}
+          address_family:
+            l2vpn:
+              received_prefixes: '>=1'
+{% endblock %}
+
+{# Global IPv4 BGP neighbors - Inherited #}
+{% block get_bgp_neighbors_ipv4_global %}
+{% endblock %}
+
+{# Tenant VRF BGP neighbors - Inherited #}
+{% block get_bgp_neighbors_vrf %}
+{% endblock %}

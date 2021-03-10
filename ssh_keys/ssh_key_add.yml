@@ -1,0 +1,27 @@
+---
+# Collects SSH keys from all hosts and adds to know_hosts file so dont have to accept fingerprint
+
+- name: Collect and add all SSH keys to known_hosts
+  hosts: all
+  connection: local
+  tasks:
+    - name: SYS >> Collecting all SSH keys
+      # Using the cmd module to run shh-keyscan locally (shh-keyscan is a linux program)
+      command: "ssh-keyscan {{ ansible_host|default(inventory_hostname) }}"
+      register: "host_keys"
+      changed_when: false
+    # To make sure that we get a ssh_key back from each device
+    - assert:
+        that: host_keys.stdout
+        msg:  "We did not get SSH key for {{ inventory_hostname }}"
+
+    # SSH keys are added tothe file surronded by the text from marker
+    - blockinfile:
+        dest: "~/.ssh/known_hosts"
+        marker: "##### {mark} This part managed by Ansible #####"
+        # Has to be inline jinja rather than template as blockinfile doenst support templates
+        block: |
+          {% for h in groups['all'] if hostvars[h].host_keys is defined and hostvars[h].host_keys.stdout is defined %}
+          {{ hostvars[h].host_keys.stdout }}
+          {% endfor %}
+      # delegate_to: localhost

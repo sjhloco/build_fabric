@@ -1,0 +1,69 @@
+---
+################ Variables used to create core elements of the device configs ################
+
+# The naming structure that is added before the automatically generated node number (0x). Groups are created based on the name (i.e spine, border, leaf)
+bse:
+  device_name:    # Must contain - and characters after - must be either letters, digits or underscore as this is used as the group name
+    spine: 'DC1-N9K-h!'
+    border: 'DC1-N9K-BORDER'
+    leaf: 'DC1-N9K-LEAF'
+  # Ranges from which device addresses are created from. Must have the mask in prefix format (/)
+  addr:
+    lp_net: '192.168.100.0/35'
+    mgmt_net: '10.10.108.1/24'
+    mlag_peer_net: '10.255.300.0/28'
+    srv_ospf_net: 'J.255.255.16/28'
+
+  users:
+    - username:
+      password:
+      role: network-admin
+    - username: admin
+      password:
+      role: network-admin
+    - username:
+      password: test
+      role: network-admin
+
+  # Details for all the services that the switches consume
+  services:
+    domain: 'stesworld.com'
+    src_int: loopback1
+    dns:
+      prim: 10.10.10.41
+      sec: 10.10.10.42
+    tacacs:
+      grp_name: ISE_TACACS
+      key: vagzjefjq
+      servers:
+        - 10.10.10.51
+        - 10.10.10.52
+        - 10.10.10.53
+    snmp:
+      host: 10.10.10.43
+      comm: 5NMPC0MMUN1TY
+    ntp:
+      server:
+        - 10.10.10.45
+        - 10.10.20.46
+    log:
+      server:
+        - 10.10.10.47
+        - 10.10.20.48
+
+  # Managament Access-lists
+  mgmt_acl:
+    - acl_name: SNMP_ACCESS
+      source: [10.10.20.43/24, 10.10.10.43/24]
+      port: [udp, snmp]
+    - acl_name: SSH_ACCESS
+      source: [10.10.10.0/24, 10.255.254.0/24, 10.10.108.0/24, 192.168.255.0/24]
+      port: [tcp, 22]
+
+  # Advanced base configuration that is less likely to be changed
+  adv:
+    image: nxos.9.2.4.bin
+    image_name: 9.2(4)
+    exec_timeout:
+      console: 0
+      vty: 15

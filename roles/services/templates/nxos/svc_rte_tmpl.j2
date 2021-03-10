@@ -1,0 +1,186 @@
+{################################################# Service: Tenant Routing #################################################}
+{######### Create the Prefix-list and Route-map configuration ########}
+ip prefix-list {{ svc_rte.adv.dflt_pl.pl_allow }} seq 5 permit 0.0.0.0/0 le 32
+ip prefix-list {{ svc_rte.adv.dflt_pl.pl_default }} seq 5 permit 0.0.0.0/0
+ip prefix-list {{ svc_rte.adv.dflt_pl.pl_deny }} seq 5 deny 0.0.0.0/0 le 32
+{% for pfx in flt_svc_rte[0] %}
+ip prefix-list {{ pfx[0] }} seq {{ pfx[1] }} {{ pfx[2] }} {{ pfx[3] }}
+{% endfor %}
+
+{% for rm in flt_svc_rte[1] %}
+route-map {{ rm[0] }} {{ rm[2] }} {{ rm[1] }}
+{% if 'CONN' in rm[0] %}
+  match interface {{ rm[3] }}
+{% elif rm[3] != None %}
+  match ip address prefix-list {{ rm[3] }}
+{% endif %}{% if rm[4][0] == 'weight' %}
+  set weight {{ rm[4][1] }}
+{% elif rm[4][0] == 'pref' %}
+  set local-preference {{ rm[4][1] }}
+{% elif rm[4][0] == 'med' or rm[4][0] == 'metric' %}
+  set metric {{ rm[4][1] }}
+{% elif rm[4][0] == 'as_prepend' %}
+  set as-path prepend {{ rm[4][1] * ((fbc.route.bgp.as_num | string) + ' ') }}
+{% endif %}{% endfor %}
+
+
+{######### Create the static routes ########}
+{## Macro for static-route, with and without destination VRF (route-leaking) ##}
+{%- macro macro_static_route(route) -%}
+{% for each_rte in route %}{% for each_pfx in each_rte.prefix %}
+{% if each_rte.next_hop_vrf is defined %}
+ip route {{ each_pfx }} {{ each_rte.interface }} {{ each_rte.gateway }}  vrf {{ each_rte.next_hop_vrf }} {{ each_rte.ad }}
+{% else %}
+ip route {{ each_pfx }} {{ each_rte.interface }} {{ each_rte.gateway }} {{ each_rte.ad }}
+{% endif %}{% endfor %}{% endfor %}
+{%- endmacro -%}
+
+{% for vrf, route in flt_svc_rte[2].items() %}
+{% if vrf |lower == 'global' %}
+{{ macro_static_route(route) }}
+{% else %}
+vrf context {{ vrf }}
+{{ macro_static_route(route) | indent(width=2, first=True) }}
+{% endif %}{% endfor %}
+
+
+{######### Create the OSPF process ########}
+{% for ospf_proc, ospf_cfg in flt_svc_rte[3].items() %}
+router ospf {{ ospf_proc }}
+{% if ospf_cfg.tenant |lower != 'global' %}
+  vrf {{ ospf_cfg.tenant }}
+{% endif %}{% if ospf_cfg.rid is defined %}
+  router-id {{ ospf_cfg.rid }}
+{% endif %}{% if ospf_cfg.bfd is sameas true %}
+    bfd
+{% endif %}{% if ospf_cfg.area_type is defined %}{% for area, type in ospf_cfg.area_type.items() %}
+    area {{ area }} {{ type }}
+{% endfor %}{% endif %}{% if ospf_cfg.default_orig is defined %}
+    default-information originate {{ ospf_cfg.default_orig }}
+{% endif %}{% if ospf_cfg.summary is defined %}
+{% for each_smry in ospf_cfg.summary %}{% if each_smry.area is defined %}
+{% for pfx, attr in each_smry.prefix.items() %}
+    area {{ each_smry.area }} range {{ pfx }} {{ attr }}
+{% endfor %}{% else %}{% for pfx, attr in each_smry.prefix.items() %}
+    summary-address {{ pfx }} {{ attr }}
+{% endfor %}{% endif %}{% endfor %}
+{% endif %}{% if ospf_cfg.auth is defined %}{% for each_area in ospf_cfg.auth %}
+    area {{ each_area }} authentication message-digest
+{% endfor %}{% endif %}
+    passive-interface default
+{% if ospf_cfg.redist is defined %}{% for each_redist in ospf_cfg.redist %}
+    redistribute {{ each_redist.type | replace('connected', 'direct') }} route-map {{ each_redist.rm_name }}
+{% endfor %}{% endif %}
+{% endfor %}
+
+{### Create the OSPF interfaces config ###}
+{% for intf, ospf_cfg in flt_svc_rte[4].items() %}
+interface {{ intf }}
+{% if ospf_cfg.type is defined %}
+{# Loopbacks dont support medium p2p so use native OSPP network cmd #}
+{% if fbc.adv.bse_intf.lp_fmt in intf %}
+  ip ospf network {{ ospf_cfg.type }}
+{% else %}
+  medium p2p
+{% endif %}{% endif %}{% if ospf_cfg.authentication is defined %}
+  ip ospf message-digest-key 1 md5 {{ ospf_cfg.authentication }}
+{% endif %}{% if ospf_cfg.cost is defined %}
+  ip ospf cost {{ ospf_cfg.cost }}
+{% endif %}
+  ip ospf bfd {{ ospf_cfg.bfd }}
+  ip ospf hello-interval {{ ospf_cfg.hello }}
+{% if ospf_cfg.passive is not defined %}
+  no ip ospf passive-interface
+{% endif %}
+  ip router ospf {{ ospf_cfg.proc }} area {{ ospf_cfg.area }}
+{% endfor %}
+
+
+{######### Create the BGP Configuration  ########}
+{## Macro for peers so can change indentation for global routing table or a VRF ##}
+{%- macro macro_peers(vrf_content) -%}
+{# Create network, summary and redistribution for the vrf - Must be done before the peers as it confuses 'address-family ipv4 unicast' even though is indented #}
+  address-family ipv4 unicast
+{% if vrf_content.network is defined %}{% for pfx in vrf_content.network %}
+    network {{ pfx }}
+{% endfor %}{% endif %}
+{% if vrf_content.summary is defined %}{% for pfx, attr in vrf_content.summary.items() %}
+    aggregate-address {{ pfx }} {{ attr }}
+{% endfor %}{% endif %}
+{% if vrf_content.redist is defined %}{% for each_redist in vrf_content.redist %}
+    redistribute {{ each_redist.type | replace('connected', 'direct') }} route-map {{ each_redist.rm_name }}
+{% endfor %}{% endif %}
+{# Create the BGP peers #}
+{% for pr in vrf_content.peers %}
+  neighbor {{ pr.peer_ip }}
+    inherit peer {{ pr.grp }}
+    descr {{ pr.descr }}
+{% if pr.remote_as is defined %}
+    remote-as {{ pr.remote_as }}
+{% endif %}{% if pr.timers is defined %}
+    timers {{ pr.timers[0] }} {{ pr.timers[1] }}
+{% endif %}{% if pr.bfd is defined %}
+    bfd
+{% endif %}{% if pr.ebgp_multihop is defined %}
+    ebgp-multihop {{pr.ebgp_multihop }}
+{% endif %}{% if pr.password is defined %}
+    password {{ pr.password }}
+{% endif %}{% if pr.update_source is defined %}
+    update-source {{ pr.update_source }}
+{% endif %}
+    address-family ipv4 unicast
+{% if pr.default is defined %}
+      default-originate
+{% endif %}{% if pr.inbound_rm is defined %}
+      route-map {{ pr.inbound_rm }} in
+{% endif %}{% if pr.outbound_rm is defined %}
+      route-map {{ pr.outbound_rm }} out
+{% endif %}{% if pr.next_hop_self  is defined  %}
+      next-hop-self
+{% endif %}{% endfor %}
+{%- endmacro -%}
+
+{## Create all BGP peer templates (groups) ##}
+router bgp {{ fbc.route.bgp.as_num }}
+{% for grp in flt_svc_rte[5].values() %}
+  template peer {{ grp.name}}
+{% if grp.remote_as is defined %}
+    remote-as {{ grp.remote_as }}
+{% endif %}{% if grp.timers is defined %}
+    timers {{ grp.timers[0] }} {{ grp.timers[1] }}
+{% endif %}{% if grp.bfd is defined %}
+    bfd
+{% endif %}{% if grp.ebgp_multihop is defined %}
+    ebgp-multihop {{ grp.ebgp_multihop }}
+{% endif %}{% if grp.password is defined %}
+    password {{ grp.password }}
+{% endif %}{% if grp.update_source is defined %}
+    update-source {{ grp.update_source }}
+{% endif %}
+    address-family ipv4 unicast
+      send-community
+      send-community extended
+      soft-reconfiguration inbound
+{% if grp.default is defined %}
+      default-originate
+{% endif %}{% if grp.inbound_rm is defined %}
+      route-map {{ grp.inbound_rm }} in
+{% endif %}{% if grp.outbound_rm is defined %}
+      route-map {{ grp.outbound_rm }} out
+{% endif %}{% if grp.next_hop_self  is defined  %}
+      next-hop-self
+{% endif %}{% endfor %}
+
+{## Create all the BGP peers ##}
+{% for vrf_name, vrf_content in flt_svc_rte[6].items() %}
+{# If global addr family it must be created first and needs 'router bgp'. Reason is that indentaion does not backward, stll adds in VRF  #}
+{% if vrf_name |lower == 'global' %}
+router bgp {{ fbc.route.bgp.as_num }}
+{{ macro_peers(vrf_content) }}
+{% endif %}{% endfor %}
+{# Re-terates the loop and adds config for all VRF addr-families  #}
+{% for vrf_name, vrf_content in flt_svc_rte[6].items() %}
+{% if vrf_name |lower != 'global' %}
+  vrf {{ vrf_name }}
+{{ macro_peers(vrf_content) | indent(width=2, first=True) }}
+{% endif %}{% endfor %}

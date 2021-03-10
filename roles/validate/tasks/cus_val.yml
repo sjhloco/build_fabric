@@ -1,0 +1,87 @@
+---
+### Uses custom_validate plugin to verify that the actual state of OSPF, LAG and MLAG matches the desired state ###
+
+# 1a. TMPL - BSE_FBC: Creates validation file of expected desired state from the input data
+- name: "CUS_VAL >> Creating {{ ansible_network_os }} bse_fbc validation file"
+  template:
+    src: "{{ ansible_network_os }}/bse_fbc_val_tmpl.j2"
+    dest: "{{ ans.dir_path }}/{{ inventory_hostname }}/validate/{{ ansible_network_os }}_desired_state.yml"
+  changed_when: False
+  tags: bse_fbc
+
+# 1b. TMPL - BSE_FBC_TNT: Creates validation file of expected desired state from the input data
+- name: "BLK >> bse_fbc and svc_tnt custom_validate validation files"
+  block:
+  - set_fact:
+      flt_svc_tnt: "{{ svc_tnt.tnt |create_svc_tnt_dm(svc_tnt.adv, fbc.adv.mlag.peer_vlan, svc_rte.adv.redist.rm_name
+                      | default(svc_tnt.adv.redist.rm_name)) }}"
+  - name: "CUS_VAL >> Creating {{ ansible_network_os }} bse_fbc and svc_tnt validation file"
+    template:
+      src: "{{ ansible_network_os }}/svc_tnt_val_tmpl.j2"
+      dest: "{{ ans.dir_path }}/{{ inventory_hostname }}/validate/{{ ansible_network_os }}_desired_state.yml"
+    changed_when: False
+  tags: bse_fbc_tnt
+
+# 1c. TMPL - BSE_FBC_TNT_INTF: Creates validation file of expected desired state from the input data
+- name: "BLK >> bse_fbc, svc_tnt and svc_intf custom_validate validation files"
+  block:
+  - set_fact:
+      flt_svc_tnt: "{{ svc_tnt.tnt |create_svc_tnt_dm(svc_tnt.adv, fbc.adv.mlag.peer_vlan, svc_rte.adv.redist.rm_name
+                    | default(svc_tnt.adv.redist.rm_name)) }}"
+  - set_fact:
+      flt_svc_intf: "{{ svc_intf.intf |create_svc_intf_dm(inventory_hostname, svc_intf.adv, fbc.adv.bse_intf) }}"
+  - set_fact:
+      flt_svc_rte: "{{ inventory_hostname |create_svc_rte_dm(svc_rte.bgp.group |default (), svc_rte.bgp.tnt_advertise |default (),
+                       svc_rte.ospf |default (), svc_rte.static_route |default (), svc_rte.adv, fbc) }}"
+  - name: "CUS_VAL >> Creating {{ ansible_network_os }} bse_fbc, svc_tnt, svc_intf and svc_rte validation file"
+    template:
+      src: "{{ ansible_network_os }}/svc_intf_val_tmpl.j2"
+      dest: "{{ ans.dir_path }}/{{ inventory_hostname }}/validate/{{ ansible_network_os }}_desired_state.yml"
+    changed_when: False
+  tags: bse_fbc_tnt_intf
+
+# 1d. TMPL - BSE_FBC_TNT_INTF_RTR: Creates validation file of expected desired state from the input data
+- name: "BLK >> bse_fbc, svc_tnt, svc_intf and svc_rte custom_validate validation files"
+  block:
+  - set_fact:
+      flt_svc_tnt: "{{ svc_tnt.tnt |create_svc_tnt_dm(svc_tnt.adv, fbc.adv.mlag.peer_vlan, svc_rte.adv.redist.rm_name
+                    | default(svc_tnt.adv.redist.rm_name)) }}"
+  - set_fact:
+      flt_svc_intf: "{{ svc_intf.intf |create_svc_intf_dm(inventory_hostname, svc_intf.adv, fbc.adv.bse_intf) }}"
+  - set_fact:
+      flt_svc_rte: "{{ inventory_hostname |create_svc_rte_dm(svc_rte.bgp.group |default (), svc_rte.bgp.tnt_advertise |default (),
+                        svc_rte.ospf |default (), svc_rte.static_route |default (), svc_rte.adv, fbc) }}"
+  - name: "CUS_VAL >> Creating {{ ansible_network_os }} bse_fbc, svc_tnt, svc_intf and svc_rte validation file"
+    template:
+      src: "{{ ansible_network_os }}/svc_rte_val_tmpl.j2"
+      dest: "{{ ans.dir_path }}/{{ inventory_hostname }}/validate/{{ ansible_network_os }}_desired_state.yml"
+    changed_when: False
+  tags: full
+
+# 2. CUSTOM: napalm_cli gets the actual state and customized version of napalm_validate used to compare and report
+- name: "Create {{ ansible_network_os }} compliance report"
+  block:
+  # Loads the validation file from which Napalm gets the commands to run
+  - include_vars: "{{ ans.dir_path }}/{{ inventory_hostname }}/validate/{{ ansible_network_os }}_desired_state.yml"
+  - name: "CUS_VAL >> Gathering actual state from the devices"
+  # Gathers the fabrics actual_state using napalm_cli
+    napalm_cli:
+      provider: "{{ ans.creds_all }}"
+      dev_os: "{{ ansible_network_os }}"
+      args:
+        commands:
+          - "{{ item.keys() | list | first }} | json"
+    register: output
+    # Loops through the cmds to run and uses label to print the cmd run at each loop iteration
+    loop: "{{ cmds }}"
+    loop_control:
+      label: "{{ item.keys() | list | first }}"
+# 3. REPORT: Output is parsed into data model and then passed through custom_validate plugin to compare states and generate a report
+  - name: "CUS_VAL >> Validating and saving compliance report to {{ ans.dir_path }}/reports/"
+    set_fact:
+      validate_result: "{{ cmds | custom_validate(output.results, ans.dir_path, inventory_hostname, ansible_network_os) }}"
+  tags: [bse_fbc, bse_fbc_tnt, bse_fbc_tnt_intf, full]
+  # tags: testing
+
+
+

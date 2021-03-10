@@ -1,0 +1,36 @@
+cmds:
+
+   - show ip route vrf all:
+      "10.0.0.0/8":
+        vrf: RED
+        ad: "1"
+        next-hop: 10.99.99.1
+      "172.16.0.0/12":
+        vrf: RED
+        ad: "1"
+        next-hop: 10.99.99.1
+      "192.168.0.0/16":
+        vrf: RED
+        ad: "1"
+        next-hop: 10.99.99.1
+      "11.1.1.0/28":
+        vrf: RED
+        ad: "254"
+        next-hop: Null0
+      "22.2.2.0/27":
+        vrf: RED
+        ad: "254"
+        next-hop: Null0
+      "22.2.2.0/28":
+        vrf: RED
+        ad: "254"
+        next-hop: Null0
+      "33.3.3.0/28":
+        vrf: RED
+        ad: "254"
+        next-hop: Null0
+      "44.4.4.0/28":
+        vrf: RED
+        ad: "254"
+        next-hop: Null0
+

@@ -1,0 +1,78 @@
+---
+###################### Service: Tenant  ######################
+
+#### Base variables ####
+svc_tnt:
+  tnt:
+    - tenant_name: BLU
+      l3_tenant: True
+      vlans:
+        - num: 10
+          name: data
+          ip_addr: 10.10.10.1/24
+        - num: dev
+          name: amb-mail
+          ip_addr: 10.10.12.1/24
+        - num: 24
+          name: servers
+          ip_addr: 10.10.11.1/24
+        - num: 3001
+          name: lb_vips
+          ip_addr: 10.10.256.1/24
+          ipv4_bgp_redist: Fals
+        - num: 40
+          name: ha_keepalive
+          create_on_leaf: False
+        - num: 110
+          name: grn-web
+
+    - tenant_name: AMB
+      l3_tenant: Tru
+      vlans:
+        - num: 110
+          name: grn-web
+          ip_addr: 10.250.110.1/24
+          create_on_border: True
+          ipv4_bgp_redist: False
+        - num: 120
+          name: grn-mail
+          ip_addr: 10.250.120.1/35
+          create_on_border: Tru
+          ipv4_bgp_redist: False
+
+    - tenant_name: AMB
+      l3_tenant: False
+      vlans:
+        - num: 210
+          name: amb-web
+          create_on_border: True
+        - num: 210
+          name: amb-mail
+          create_on_border: True
+
+    - tenant_name: RED
+      l3_tenant: "False"
+      vlans:
+        - num: 3002
+          name: red-ctt1
+          create_on_border: True
+          create_on_leaf: False
+        - num: 91
+          name: test
+          create_on_border: True
+          create_on_leaf: Fals
+
+#### Advanced variables ####
+
+  adv:
+    bse_vni:
+      tnt_vlan: 3001
+      l3vni: 3001
+      l2vni: "10000"
+    vni_incre:
+      tnt_vlan: 1
+      l3vni: 1
+      l2vni: 10000
+
+    redist:
+      rm_name: RM_src_to_dsta

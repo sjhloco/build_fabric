@@ -1,0 +1,69 @@
+cmds:
+
+cmds:
+  - show ip ospf interface brief vrf all:
+{% for each_proc in svc_rte.ospf %}{% if each_proc.interface is defined %}
+{# Checks if local host is in the switches defined under inteface, if not then checks under process #}
+{% for each_intf in each_proc.interface %}{% if inventory_hostname in each_intf.switch |default(each_proc.switch) %}
+{% for each_name in each_intf.name %}
+      {{ each_name | replace(fbc.adv.bse_intf.intf_fmt, fbc.adv.bse_intf.intf_short) }}:
+        proc: '{{ each_proc.process }}'
+        area: {{ each_intf.area }}
+        status: up
+        nbr_count: '>=1'
+{% endfor %}{% endif %}
+{% endfor %}{% endif %}
+{% endfor %}
+
+
+ - show bgp vrf all ipv4 unicast:
+{### BGP NETWORK ###}
+{% for each_tnt in svc_rte.bgp.tnt_advertise  %}
+{% set network = [] %}
+{% set summary = [] %}
+{% if each_tnt.network is defined %}{% for each_net in each_tnt.network %}
+{# If local host is in either network.switch or tnt.switch add to list, use list as in some situations can get duplicates #}
+{% if inventory_hostname in each_net.switch | default(each_tnt.switch) %}{% for each_pfx in each_net.prefix %}
+    {{ network.append(each_pfx) }}
+{% endfor %}{% endif %}
+{% endfor %}{% endif %}
+{### BGP SUMMARY ###}
+{% if each_tnt.summary is defined %}{% for each_sum in each_tnt.summary %}
+{# If local host is in either summary.switch or tnt.switch add to list, use list as in some situations can get duplicates #}
+{% if inventory_hostname in each_sum.switch | default(each_tnt.switch) %}{% for each_pfx in each_sum.prefix %}
+    {{ summary.append(each_pfx) }}
+{% endfor %}{% endif %}
+{% endfor %}{% endif %}
+{# Output of the temp lists to cretae the Data model for the tenant #}
+{% for each_net in network | unique %}
+      {{ each_net }}:
+        'vrf': {{ each_tnt.name }}
+        'best': 'bestpath'
+        'type': 'local'
+        'status': 'valid'
+{% endfor %}
+{% for each_sum in summary | unique %}
+      {{ each_sum }}:
+        'vrf': {{ each_tnt.name }}
+        'best': 'bestpath'
+        'type': 'aggregate'
+        'status': 'valid'
+{% endfor %}
+{% endfor %}
+
+
+  - show ip route vrf all:
+{% for each_grp_tnt in svc_rte.static_route %}{% if each_grp_tnt.route is defined %}
+{% for each_tnt in each_grp_tnt.tenant %}
+{# Checks if local host is in the switches defined under route, if not then checks under main dictionary #}
+{% for each_rte in each_grp_tnt.route %}{% if inventory_hostname in each_rte.switch |default(each_grp_tnt.switch) %}
+{% for each_pfx in each_rte.prefix %}
+      "{{ each_pfx }}":
+        vrf: {{ each_tnt }}
+        ad: "{{ each_rte.ad | default('1') }}"
+        next-hop: {{ each_rte.gateway | default(each_rte.interface) }}
+{% endfor %}
+{% endif %}{% endfor %}
+{% endfor %}
+{% endif %}{% endfor %}
+

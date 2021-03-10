@@ -1,0 +1,29 @@
+### the inventory config file that is referenced in playbook runs to run the inventory plugin ###
+# To just run the inventory plugin to generate the host_vars and group_vars that are printed to screen:
+# ansible-inventory --playbook-dir=$(pwd) -i inv_from_vars_cfg.yml --list
+
+# Name of the inventory plugin (stored in the inventory_plugins directory)
+plugin: inv_from_vars
+
+# Data-model in Ansible vars directory where dictionaries will be imported from
+var_files:
+  - ansible.yml
+  - base.yml
+  - fabric.yml
+
+#Dictionaries that will be imported from the variable files in the vars directory
+var_dicts:
+  ansible:
+    - device_os
+  base:
+    - device_name
+    - addr
+  fabric:
+    - network_size
+    - num_intf
+    - bse_intf
+    - lp
+    - mlag
+    - addr_incre
+
+

@@ -1,0 +1,57 @@
+{################################################# Service: Device Ports #################################################}
+{% for intf in flt_svc_intf %}
+interface {{ intf.intf_num }}
+  description {{ intf.descr }}
+{#### L3: Layer3 only config ####}
+{% if intf.type == 'layer3' %}
+  no switchport
+{% endif %}
+{### SVI: Layer3 VLAN only config ###}
+{% if intf.type == 'svi' %}
+  no ip redirects
+  no ipv6 redirects
+{% endif %}
+{### L3: Common config for all Layer3, loopback and SVIs ###}
+{% if intf.type == 'layer3' or intf.type == 'loopback' or intf.type == 'svi' %}
+{% if intf.tenant is defined %}
+  vrf member {{ intf.tenant }}
+{% endif %}
+  ip address {{ intf.ip_vlan }}
+{% else %}
+{#### L2: Common config for all Layer2 ports ####}
+  spanning-tree port type {{ intf.stp }}
+  !#switchport
+{### Layer2 Access port config ###}
+{% if intf.type == 'access' %}
+  switchport access vlan {{ intf.ip_vlan }}
+{### Layer2 single-homed access port config ###}
+{% if intf.dual_homed is sameas false %}
+  !#switchport trunk allowed vlan 1-4094
+  switchport mode access
+{### Layer2 port-channel access port config ###}
+{% endif %}{% if fbc.adv.bse_intf.mlag_fmt in intf.intf_num %}
+  !#switchport trunk allowed vlan 1-4094
+  switchport mode access
+  vpc {{ intf.vpc_num }}
+{#### TRUNK Layer2 Trunk port config ####}
+{% endif %}{% elif 'trunk' in intf.type %}
+{% if intf.type == 'non_stp_trunk' %}
+  spanning-tree bpduguard enable
+{### Layer2 single-homed trunk port config ###}
+{% endif %}{% if intf.dual_homed is sameas false %}
+  switchport trunk allowed vlan {{ intf.ip_vlan  }}
+  switchport mode trunk
+{### Layer2 port-channel trunk port config ###}
+{% endif %}{% if fbc.adv.bse_intf.mlag_fmt in intf.intf_num %}
+  switchport trunk allowed vlan {{ intf.ip_vlan  }}
+  switchport mode trunk
+  vpc {{ intf.vpc_num }}
+{#### All Layer2 dual-homed ports ####}
+{% endif %}{% endif %}{% if intf.dual_homed is sameas true %}
+{% if intf.po_mode == 'on' %}
+  channel-group {{ intf.po_num }} force
+{% else %}
+  channel-group {{ intf.po_num }} force mode {{ intf.po_mode }}
+{% endif %}{% endif %}{% endif %}
+  no shutdown
+{% endfor %}

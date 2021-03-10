@@ -1,0 +1,139 @@
+###################### Service: Device Ports ######################
+
+#### Base variables ####
+# If not using single-homed or dual-homed interfaces make sure the dictionary (*single_homed* or *dual_homed*) is hashed out.
+
+svc_intf:
+  intf:
+    single_homed:
+      - descr: L3 > DC1-ASAv-XFW01 eth1
+        type: layer3
+        tenant: RED
+        ip_vlan: 10.255.99.1/30
+        switch: [DC1-N9K-BORDER01]
+        intf_num: one
+      - descr: L3 > DC1-ASAv-XFW02 eth1
+        type: layer3
+        tenant: BLU
+        ip_vlan: 10.255.99.256/30
+        switch: [DC1-N9K-BORDER02]
+      - descr: L3 > DC1-SRV-MON01 nic1
+        type: layer3
+        tenant: BLU
+        ip_vlan: 10.100.100.21/33
+        switch: [DC1-N9K-LEAF01]
+      - descr: L3 > DC1-SRV-MON05 nic1
+        type: layer3
+        tenant: RED
+        ip_vlan: 10.100.100.21/33
+        switch: [DC1-N9K-LEAF01]
+      - descr: ACCESS > DC1-SRV-APP01 eth1
+        type: access
+        ip_vlan: 10
+        switch: [DC1-N9K-LEAF02, DC1-N9K-LEAF04]
+      - descr: UPLINK > DC1-VIOS-SW3
+        type: stp_trunk
+        ip_vlan: 110,one
+        switch: [DC1-N9K-LEF01]
+      - descr: UPLINK > DC1-VIOS-SW4
+        type: stp_trunk_non_ba
+        ip_vlan: "30"
+        switch: [DC1-N9K-LEAF01]
+      - descr: ACCESS >DC1-LTM-LB02
+        type: non_stp_trunk
+        ip_vlan: 30
+        switch: [DC1-N9K-LEAF01, DC1-N9K-LEAF02]
+      - descr: LP > MCAST PIM
+        type: loopback
+        ip_vlan: 7.7.7.7/32
+        switch: [DC1-N9K-LEAF01]
+      - descr: LP > OSPF
+        type: loopback
+        ip_vlan: 8.8.8.8/32
+        switch: [DC1-N9K-LEAF01]
+      - descr: LP > BGP
+        type: loopback
+        ip_vlan: 9.9.9.9/31
+        switch: [DC1-N9K-LEAF01]
+      - descr: UPLINK > DC1-VIOS-DMZ05
+        type: stp_trunk_non_ba
+        ip_vlan: 110-112,120,110
+        switch: [DC1-N9K-BORDER01]
+        intf_num: 2
+      - descr: LP > BGP
+        type: loopback
+        ip_vlan: 12.12.12.12/32
+        switch: [DC1-N9K-BORDER02]
+        intf_num: 2
+      - descr: LP > BGP
+        type: loopback
+        ip_vlan: 11.11.11.11/32
+        switch: [DC1-N9K-BORDER02]
+        intf_num: 3
+
+
+    dual_homed:
+      - descr: ACCESS >DC1-SRV-APP01 eth1
+        type: access
+        ip_vlan: Ten
+        switch: [DC1-N9K-LEAF01]
+      - descr: ACCESS >DC1-SRV-PRD01 eth1
+        type: layer3
+        ip_vlan: 20
+        switch: [DC1-N9K-LEAF01, DC1-N9K-BORDER01]
+        intf_num: 45
+        po_num: four
+        po_mode: act
+      - descr: UPLINK > DC1-VIOS-SW1
+        type: stp_trunk
+        ip_vlan: 110, 120
+        switch: [DC1-N9K-LEAF01]
+      - descr: UPLINK > DC1-VIOS-SW2
+        type: stp_trunk_non_ba
+        ip_vlan: 30
+        switch: [DC1-N9K-LEAF01]
+        intf_num: 15
+      - descr: ACCESS >DC1-LTM-LB01
+        type: non_stp_trunk
+        ip_vlan: 30
+        switch: [DC1-N9K-LEAF01]
+        intf_num: 25
+      - descr: UPLINK > DC1-LTM-ESX1
+        type: non_stp_trunk
+        ip_vlan: 10,20,24,30
+        switch: [DC1-N9K-LEAF01]
+        po_num: 66
+      - descr: UPLINK > DC1-VIOS-DMZ01
+        type: stp_trunk_non_ba
+        ip_vlan: 110-112,120,10
+        switch: [DC1-N9K-BORDER02]
+      - descr: UPLINK > DC1-VIOS-DMZ01
+        type: stp_trunk_non_ba
+        ip_vlan: 110-112,120,110
+        switch: [DC1-N9K-LEAF01]
+      - descr: LP > MCAST PIM
+        type: loopback
+        ip_vlan: 7.7.7.7/32
+        switch: [DC1-N9K-LEAF01]
+      - descr: UPLINK > DC1-VIOS-DMZ05
+        type: stp_trunk_non_ba
+        ip_vlan: 110-112,120,110
+        switch: [DC1-N9K-BORDER01]
+        po_num: 1
+
+#### Advanced variables ####
+# Reserved interface ranges that server ports can be automatically assigned from (applies to all leaf and border switches)
+
+  adv:
+    single_homed:
+      first_intf: 33
+      last_intf: 34
+      first_lp: 11
+      last_lp: 12
+    dual_homed:
+        first_intf: 13
+        last_intf: 15
+        first_po: 31
+        last_po: 32
+
+

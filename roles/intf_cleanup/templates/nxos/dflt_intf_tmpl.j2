@@ -1,0 +1,8 @@
+{###### Resets any non-used interface to the default setting, without this not declerative as interface config is not removed ######}
+{% for intf in flt_dflt_intf%}
+interface {{ intf }}
+  !#shutdown
+  !#switchport
+  switchport mode access
+  !#switchport trunk allowed vlan 1-4094
+{% endfor %}

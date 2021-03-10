@@ -1,0 +1,105 @@
+{### Builds validation for services_interfaces.yml. Block inherits from XXXXXX and extends to svc_intf_val_tmpl.j2  ###}
+
+{## Adds the results of this rendered file into the svc_tnt_val_tmpl file ##}
+{% extends ansible_network_os + "/svc_tnt_val_tmpl.j2" %}
+
+{# Macro as creating IP interface validation use the same code each time #}
+{%- macro macro_show_ip_int_br(intf) -%}
+        prefix: {{ intf.ip_vlan |ipaddr('address') }}
+        tenant: {{ intf.tenant | default('default') }}
+        proto-state: up
+        link-state: up
+        admin-state: up
+{%- endmacro -%}
+
+
+cmds:
+{## show port-channel summary ##}
+{% block show_port_channel_summary %}{% for intf in flt_svc_intf %}{% if intf['po_num'] is defined %}
+      {{ fbc.adv.bse_intf.mlag_fmt + intf.po_num |string }}:
+        oper_status: U
+{% if intf['po_mode'] == 'on' %}
+        protocol: NONE
+{% else %}
+        protocol: LACP
+{% endif %}
+        members:
+          _mode: strict
+          {{ intf.intf_num }}:
+            mbr_status: P
+{% endif %}{% endfor %}{% endblock %}
+
+
+{## show vpc ##}
+{% block show_vpc %}
+{{ super() }}
+{% for intf in flt_svc_intf %}{% if intf.vpc_num is defined %}
+      {{ intf.intf_num | replace(fbc.adv.bse_intf.mlag_fmt,fbc.adv.bse_intf.mlag_short) }}:
+        consistency_status: SUCCESS
+        port_status: "1"
+        vpc_num: "{{ intf.vpc_num }}"
+        active_vlans: "{{ intf.ip_vlan }}"
+{% endif %}{% endfor %}{% endblock %}
+
+{## show interfaces_trunk ##}
+{% block show_int_trunk %}
+{{ super() }}
+{% for intf in flt_svc_intf %}{% if 'trunk' in intf.type %}
+      {{ intf.intf_num  }}:
+        allowed_vlans: {{ intf.ip_vlan }}
+{% if intf.po_num is not defined %}
+        stpfwd_vlans: {{ intf.ip_vlan }}
+{% else %}
+        stpfwd_vlans: none
+{% endif %}{% endif %}{% endfor %}
+{% endblock %}
+
+
+{## show ip int brief include-secondary vrf all ##}
+{% block show_ip_int_brief %}
+{{ super() }}
+{% for intf in flt_svc_intf %}
+{% if intf.type == "layer3" %}
+      {{ intf.intf_num | replace('Ethernet','Eth') }}:
+        {{ macro_show_ip_int_br(intf) }}
+{% elif intf.type == "loopback" %}
+      {{ intf.intf_num | replace('loopback','Lo') }}:
+        {{ macro_show_ip_int_br(intf) }}
+{% endif %}{% endfor %}
+{% endblock %}
+
+
+{## show interface status ##}
+{% block show_int_status%}{% if bse.device_name.spine not in inventory_hostname %}
+  - show interface status:
+{% for intf in flt_svc_intf %}
+{% if 'Port-channel' in intf.intf_num %}
+      {{ intf.intf_num | replace('Port-channel','port-channel') }}:
+{% else %}
+      {{ intf.intf_num  }}:
+{% endif %}
+        name: {{ intf.descr }}
+        state: connected
+{% if intf.type == "layer3" or intf.type == "loopback" or intf.type == "svi"%}
+        vlan: routed
+{% elif intf.type == "access" %}
+        vlan: "{{ intf.ip_vlan }}"
+{% else %}
+        vlan: trunk
+{% endif %}{% endfor %}
+{% endif %}{% endblock %}
+
+
+{## show ip ospf interface brief vrf all - Inherited ##}
+{% block show_ip_ospf_int_brief%}
+{% endblock %}
+
+
+{## show bgp vrf all ipv4 unicast - Inherited ##}
+{% block show_bgp_vrf_all%}
+{% endblock %}
+
+
+{### show ip route vrf all - Inherited ###}
+{% block show_ip_route_vrf_all%}
+{% endblock %}

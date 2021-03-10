@@ -1,0 +1,14 @@
+---
+### Uses template to build the default config for any unused interfaces removing those used with host_vars and service_interfaces.yml ###
+- name: "Getting interface list"
+  block:
+  - name: "INTF_CLN >> Getting list of unused interfaces"
+    set_fact:
+      flt_dflt_intf: "{{ hostvars[inventory_hostname] |get_intf(fbc.adv.bse_intf, flt_svc_intf |default(None)) }}"
+
+  - name: "INTF_CLN >> Generating default interface config snippet"
+    template:
+      src: "{{ ansible_network_os }}/dflt_intf_tmpl.j2"
+      dest: "{{ ans.dir_path }}/{{ inventory_hostname }}/config/dflt_intf.conf"
+    changed_when: False           # Stops it reporting changes in playbook summary
+    check_mode: False             # These tasks still make changes when in check mode

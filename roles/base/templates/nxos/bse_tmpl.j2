@@ -1,0 +1,364 @@
+{# Sets services source interface and VRF used by services in the template #}
+{% if bse.services.src_intf is defined %}
+!!!!! Finish this once have svc_intf back working !!!!!!!
+{# {% for intf in flt_dflt_intf %}
+{% if intf.xxx == bse.services.src_intf %}
+{% set use_vrf = 'xxx' %}
+{% set src_intf = bse.services.src_intf %} #}
+{% else %}
+{% set use_vrf = 'management' %}
+{% set src_intf = 'mgmt0' %}
+{% endif %}
+
+{####### VERY IMPORTANT!!!  Without these two lines the napalm config replace will fail #######}
+!Command: Checkpoint cmd vdc 1
+version {{ bse.adv.image_version }} Bios:version
+
+{####### TCAM - This will change dependant model and fetures enabled #######}
+{% if bse.device_name.spine not in inventory_hostname %}
+hardware access-list tcam region racl 512
+hardware access-list tcam region arp-ether 256 double-wide
+{% endif %}
+
+{####### General settings and features #######}
+hostname {{ inventory_hostname }}
+no ip domain-lookup
+ip domain-name {{ bse.services.domain |default('evilcorp.com') }}
+ip name-server {{ bse.services.dns.prim| default('8.8.8.8') }} {{ bse.services.dns.sec| default('1.1.1.1') }}
+crypto key generate rsa label {{ inventory_hostname }}.{{ bse.services.domain |default('evilcorp.com') }} modulus 2048
+boot nxos bootflash:/{{ bse.adv.image }} sup-1
+
+system default switchport shutdown
+no nxapi http
+nxapi https port 443
+{# On N9Kv cmd intermitantly breaks API and have remove/add back feature nxapi #}
+{# nxapi use-vrf management #}
+no nxapi ssl ciphers weak
+nxapi ssl protocols TLSv1.2
+no nxapi client certificate authentication
+nxapi idle-timeout 10
+xml server timeout 1200
+
+feature ssh
+ssh key rsa 1024
+feature nxapi
+feature scp-server
+feature tacacs+
+cfs eth distribute
+nv overlay evpn
+feature ospf
+feature bgp
+feature fabric forwarding
+feature interface-vlan
+feature vn-segment-vlan-based
+feature bash-shell
+feature lldp
+feature bfd
+clock timezone GMT 0 0
+clock summer-time BST 5 sun mar 02:00 5 sun oct 02:00 60
+
+{% if bse.device_name.spine not in inventory_hostname %}
+feature lacp
+feature vpc
+feature nv overlay
+feature dhcp
+ipv6 dhcp relay
+ip dhcp relay
+{% endif %}
+
+{####### Username and authetication based settings #######}
+no password strength-check
+{% for usr in bse.users %}
+username {{ usr.username }} password 5 {{ usr.password }} role {{ usr.role }}
+{% endfor %}
+
+{## TACACs config is dependant on whether tacacs service is defined ##}
+{% if bse.services.tacacs is defined %}
+tacacs-server key 7 "{{ bse.services.tacacs.key }}"
+{% for srv in bse.services.tacacs.server %}
+tacacs-server host {{ srv }} single-connection
+{% endfor %}
+aaa group server tacacs+ {{ bse.services.tacacs.grp_name }}
+{% for srv in bse.services.tacacs.server %}
+    server {{ srv }}
+{% endfor %}
+    source-interface {{ src_intf }}
+    use-vrf {{ use_vrf }}
+aaa authentication login default group {{ bse.services.tacacs.grp_name }}
+aaa authentication login console local
+aaa authorization commands default group {{ bse.services.tacacs.grp_name }} local
+aaa accounting default group {{ bse.services.tacacs.grp_name }}
+aaa authentication login error-enable
+{% endif %}
+
+{####### Managment ACLs, start sequence number has 10 added with each loop iteration #######}
+{% for acl in bse.mgmt_acl: %}
+{% set seq = namespace(cnt=10) %}
+ip access-list {{ acl.acl_name }}
+{% for host in acl.source %}
+  {{ seq.cnt }} permit {{ acl.port[0] }} {{ host }} any eq {{ acl.port[1] }}
+{% set seq.cnt= seq.cnt + 10 %}
+{% endfor %}
+  {{ seq.cnt }} deny ip any any log
+{% endfor %}
+
+{####### SNMP, NTP and logging #######}
+{## SNMP config is dependant on whether SNMP service is defined ##}
+{% if bse.services.snmp is defined %}
+snmp-server source-interface traps {{ src_intf  }}
+snmp-server source-interface informs {{ src_intf }}
+snmp-server host {{ bse.services.snmp.host }} traps version 2c {{ bse.services.snmp.comm }}
+snmp-server community {{ bse.services.snmp.comm }} group network-operator
+snmp-server community {{ bse.services.snmp.comm }} use-ipv4acl {{ bse.mgmt_acl[0]['acl_name'] }}
+{% endif %}
+snmp-server user admin network-admin auth md5 0x99187947008c0a20401eac07e9fb58c3 priv 0x99187947008c0a20401eac07e9fb58c3 localizedkey
+
+{## NTP config is dependant on whether NTP service is defined ##}
+{% if bse.services.ntp is defined %}{% for ntp in bse.services.ntp.server %}
+ntp server {{ ntp }} use-vrf {{ use_vrf }}
+{% endfor %}
+ntp source-interface {{ src_intf }}
+{% endif %}
+
+{## SYSLOG config is dependant on whether LOG service is defined ##}
+{% if bse.services.log is defined %}{% for log in bse.services.log.server %}{% if use_vrf != 'default' %}
+logging server {{ log }} {{ bse.services.log.level |default(5)}} use-vrf {{ use_vrf }}
+{% else %}
+logging server {{ log }} {{ bse.services.log.level |default(5)}}
+{% endif %}{% endfor %}
+logging message interface type ethernet description
+logging source-interface {{ src_intf }}
+{% endif %}
+!#logging logfile messages 5 size 4194304
+!#logging monitor
+!#logging module
+!#logging console
+
+
+{####### VRFs, Interfaces and Management access #######}
+vlan 1
+interface Vlan1
+  no ip redirects
+  no ipv6 redirects
+
+vrf context management
+  ip route 0.0.0.0/0 {{ bse.addr.mgmt_gw }}
+
+interface mgmt0
+  vrf member management
+  ip address {{ ansible_host }}/{{ bse.addr.mgmt_net.split('/')[1] }}
+cli alias name wr copy running-config startup-config
+line console
+  exec-timeout {{ bse.adv.exec_timeout.console }}
+line vty
+  exec-timeout {{ bse.adv.exec_timeout.vty }}
+  access-class {{ bse.mgmt_acl[1]['acl_name'] }} in
+
+{####### Other settings such as resourse, roles, CoPP, RMON and callhome #######}
+icam monitor scale
+copp profile strict
+no system mode maintenance
+vdc {{ inventory_hostname }} id 1
+  limit-resource vlan minimum 16 maximum 4094
+  limit-resource vrf minimum 2 maximum 4096
+  limit-resource port-channel minimum 0 maximum 511
+  limit-resource u4route-mem minimum 248 maximum 248
+  limit-resource u6route-mem minimum 96 maximum 96
+  limit-resource m4route-mem minimum 58 maximum 58
+  limit-resource m6route-mem minimum 8 maximum 8
+  limit-resource vni_bd minimum 4096 maximum 4096
+
+no priority-flow-control override-interface mode off
+rmon event 1 description FATAL(1) owner PMON@FATAL
+rmon event 2 description CRITICAL(2) owner PMON@CRITICAL
+rmon event 3 description ERROR(3) owner PMON@ERROR
+rmon event 4 description WARNING(4) owner PMON@WARNING
+rmon event 5 description INFORMATION(5) owner PMON@INFO
+
+callhome
+  !#destination-profile CiscoTAC-1 message-level 0
+  !#destination-profile CiscoTAC-1 message-size 5000000
+  !#destination-profile full_txt message-level 0
+  !#destination-profile full_txt message-size 2500000
+  !#destination-profile short_txt message-level 0
+  !#destination-profile short_txt message-size 4000
+  !#periodic-inventory notification interval 7
+  !#periodic-inventory notification timeofday 08:00
+
+class-map type network-qos c-nq1
+  description Default class on qos-group 1
+  match qos-group 1
+class-map type network-qos c-nq2
+  description Default class on qos-group 2
+  match qos-group 2
+class-map type network-qos c-nq3
+  description Default class on qos-group 3
+  match qos-group 3
+class-map type network-qos c-8q-nq1
+  description Default class on qos-group 1
+  match qos-group 1
+class-map type network-qos c-8q-nq2
+  description Default class on qos-group 2
+  match qos-group 2
+class-map type network-qos c-8q-nq3
+  description Default class on qos-group 3
+  match qos-group 3
+class-map type network-qos c-8q-nq4
+  description Default class on qos-group 4
+  match qos-group 4
+class-map type network-qos c-8q-nq5
+  description Default class on qos-group 5
+  match qos-group 5
+class-map type network-qos c-8q-nq6
+  description Default class on qos-group 6
+  match qos-group 6
+class-map type network-qos c-8q-nq7
+  description Default class on qos-group 7
+  match qos-group 7
+class-map type network-qos c-nq-default
+  description Default class on qos-group 0
+  match qos-group 0
+class-map type network-qos c-8q-nq-default
+  description Default class on qos-group 0
+  match qos-group 0
+
+policy-map type network-qos default-nq-policy
+  class type network-qos c-nq3
+    mtu 1500
+  class type network-qos c-nq2
+    mtu 1500
+  class type network-qos c-nq1
+    mtu 1500
+  class type network-qos c-nq-default
+    mtu 1500
+policy-map type network-qos default-8q-nq-policy
+  class type network-qos c-8q-nq7
+    mtu 1500
+  class type network-qos c-8q-nq6
+    mtu 1500
+  class type network-qos c-8q-nq5
+    mtu 1500
+  class type network-qos c-8q-nq4
+    mtu 1500
+  class type network-qos c-8q-nq3
+    mtu 1500
+  class type network-qos c-8q-nq2
+    mtu 1500
+  class type network-qos c-8q-nq1
+    mtu 1500
+  class type network-qos c-8q-nq-default
+    mtu 1500
+
+role name priv-15
+  description This is a system defined privilege role.
+  rule 1 permit read-write
+role name priv-14
+  description This is a system defined privilege role.
+  rule 1 permit read-write
+role name priv-13
+  description This is a system defined privilege role.
+role name priv-12
+  description This is a system defined privilege role.
+role name priv-11
+  description This is a system defined privilege role.
+role name priv-10
+  description This is a system defined privilege role.
+role name priv-9
+  description This is a system defined privilege role.
+role name priv-8
+  description This is a system defined privilege role.
+role name priv-7
+  description This is a system defined privilege role.
+role name priv-6
+  description This is a system defined privilege role.
+role name priv-5
+  description This is a system defined privilege role.
+role name priv-4
+  description This is a system defined privilege role.
+role name priv-3
+  description This is a system defined privilege role.
+role name priv-2
+  description This is a system defined privilege role.
+role name priv-1
+  description This is a system defined privilege role.
+role name priv-0
+  description This is a system defined privilege role.
+  rule 10 permit command traceroute6 *
+  rule 9 permit command traceroute *
+  rule 8 permit command telnet6 *
+  rule 7 permit command telnet *
+  rule 6 permit command ping6 *
+  rule 5 permit command ping *
+  rule 4 permit command ssh6 *
+  rule 3 permit command ssh *
+  rule 2 permit command enable *
+  rule 1 permit read
+
+!# qos statistics
+!# class-map type queuing match-any c-out-q3
+  !# match qos-group 3
+!# class-map type queuing match-any c-out-q2
+  !# match qos-group 2
+!# class-map type queuing match-any c-out-q1
+  !# match qos-group 1
+!# class-map type queuing match-any c-out-q-default
+  !# match qos-group 0
+!# class-map type queuing match-any c-out-8q-q7
+  !# match qos-group 7
+!# class-map type queuing match-any c-out-8q-q6
+  !# match qos-group 6
+!# class-map type queuing match-any c-out-8q-q5
+  !# match qos-group 5
+!# class-map type queuing match-any c-out-8q-q4
+  !# match qos-group 4
+!# class-map type queuing match-any c-out-8q-q3
+  !# match qos-group 3
+!# class-map type queuing match-any c-out-8q-q2
+  !# match qos-group 2
+!# class-map type queuing match-any c-out-8q-q1
+  !# match qos-group 1
+!# class-map type queuing match-any c-out-8q-q-default
+  !# match qos-group 0
+!# class-map type queuing match-any c-in-q7
+  !# match qos-group 7
+!# class-map type queuing match-any c-in-q6
+  !# match qos-group 6
+!# class-map type queuing match-any c-in-q5
+  !# match qos-group 5
+!# class-map type queuing match-any c-in-q4
+  !# match qos-group 4
+!# class-map type queuing match-any c-in-q3
+  !# match qos-group 3
+!# class-map type queuing match-any c-in-q2
+  !# match qos-group 2
+!# class-map type queuing match-any c-in-q1
+  !# match qos-group 1
+!# class-map type queuing match-any c-in-q-default
+  !# match qos-group 0
+
+policy-map type queuing default-out-policy
+  class type queuing c-out-q3
+    priority level 1
+  class type queuing c-out-q2
+    bandwidth remaining percent 0
+  class type queuing c-out-q1
+    bandwidth remaining percent 0
+  class type queuing c-out-q-default
+    bandwidth remaining percent 100
+policy-map type queuing default-8q-out-policy
+  class type queuing c-out-8q-q7
+    priority level 1
+  class type queuing c-out-8q-q6
+    bandwidth remaining percent 0
+  class type queuing c-out-8q-q5
+    bandwidth remaining percent 0
+  class type queuing c-out-8q-q4
+    bandwidth remaining percent 0
+  class type queuing c-out-8q-q3
+    bandwidth remaining percent 0
+  class type queuing c-out-8q-q2
+    bandwidth remaining percent 0
+  class type queuing c-out-8q-q1
+    bandwidth remaining percent 0
+  class type queuing c-out-8q-q-default
+    bandwidth remaining percent 100

@@ -1,0 +1,4 @@
+DC1-N9K-BORDER01    ansible_host=10.10.108.16
+DC1-N9K-BORDER02    ansible_host=10.10.108.17
+DC1-N9K-LEAF02      ansible_host=10.10.108.22
+DC1-N9K-LEAF01      ansible_host=10.10.108.21

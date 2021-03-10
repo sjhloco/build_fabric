@@ -1,0 +1,76 @@
+---
+################ Variables used to decide how the fabric will look ################
+
+# This Only scales to 4 spines, 10 leafs, 4 borders. By default the following ports are used:
+# SPINE-to-LEAF = Eth1/1 - 1/10           SPINE-to-Border = Eth1/11 - 1/15
+# LEAF-to-SPINE = Eth1/1 - 1/5            BORDER-to-SPINE: = Eth1/1 - 1/5
+# MLAG Peer-link = Eth1/127 - 128          MLAG keepalive = mgmt
+
+# How big the network is, so the number of each switch. border/leaf must be in increments of 2 as in MLAG pair
+fbc:
+  network_size:
+    num_spine: 5
+    num_border: 1
+    num_leaf: "2"
+
+# Number of interfaces on the device (first and last interface). Is needed to make interfaces declerative and default all interfaces not used
+  num_intf:
+    spine: 1,h
+    border: 44,128
+    leaf: 1,1289
+
+# To change Fabric routing protocol settings
+  route:
+    ospf:
+      pro:
+      area: 0.0.0.267
+    bgp:
+      as_num:
+
+  acast_gw_mac: 000.2222:33z3
+################ Advanced settings to further customize the fabric ################
+
+  adv:
+    # Seed interfaces used to create the fabric. These are the first interfaces used, the inventory pluggin increments them
+    bse_intf:
+      intf_fmt: Ethernet1/
+      intf_short: Eth1/
+      mlag_fmt: Port-channel
+      mlag_short: Po
+      lp_fmt: loopback
+      sp_to_lf: 1
+      sp_to_bdr: ee
+      lf_to_sp: 1
+      bdr_to_sp:
+      mlag_peer: 11d12
+
+    # Loopback interfaces to be used, numbers and descriptions can be changed. As per best practise one per function.
+    lp:
+      rtr:
+        num: 1
+        descr: LP > Routing protocol RID and peerings
+      vtep:
+        num: 2
+        descr: LP > VTEP Tunnels (PIP) and MLAG (VIP)
+      bgw:
+        num: 2
+        descr: LP > BGW anycast address
+
+    # All MLAG specific settings except for peer Link interfaces (bse.adv.base_intf.mlag_peer) and subnet (bse.addr.mlag_peer_net)
+    mlag:
+      domain: 1
+      peer_po: "2"
+      peer_vlan: data
+
+  # The increment that is added to the subnet and device hostname number to generate the unique last octet of the IP addresses
+    addr_incre:
+      spine_ip: 11
+      border_ip: "16"
+      leaf_ip:
+      border_vtep_lp: 41
+      leaf_vtep_lp: 41
+      border_mlag_lp: five
+      leaf_mlag_lp: 51
+      border_bgw_lp: 51
+      mlag_leaf_ip: 0
+      mlag_border_ip: 10

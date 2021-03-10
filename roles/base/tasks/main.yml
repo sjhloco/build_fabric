@@ -1,0 +1,16 @@
+---
+### Uses template to build the base configuration (mainly non-fabric) using mostly the variables from base.yml) ###
+
+# THIS IS TO BE ADDED AFTER WHEN HAVE GOT SVC INTERFACES WORKING
+# - name: "Getting tenant interface list"
+#   block:
+#   - name: "SYS >> Getting list of tenant interfaces"
+#     set_fact:
+#       flt_dflt_intf: "{{ flt_svc_intf |default(None) }}"
+
+- name: "BSE >> Generating base config snippets"
+  template:
+    src: "{{ ansible_network_os }}/bse_tmpl.j2"
+    dest: "{{ ans.dir_path }}/{{ inventory_hostname }}/config/base.conf"
+  changed_when: False           # Stops it reporting changes in playbook summary
+  check_mode: False             # These tasks still make changes when in check mode

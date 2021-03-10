@@ -1,0 +1,189 @@
+---
+# This playbook is used to to deploy leaf and spine topology
+
+- name: "Deploy Leaf and Spine DC"
+  hosts: all
+  # hosts: DC1-N9K-LEAF01:DC1-N9K-BORDER01
+  # hosts: DC1-N9K-SPINE01:DC1-N9K-SPINE02
+  # hosts: DC1-N9K-LEAF01:DC1-N9K-LEAF02
+  # hosts: DC1-N9K-BORDER01:DC1-N9K-BORDER02
+  # hosts: DC1-N9K-SPINE01
+  # hosts: DC1-N9K-LEAF01:DC1-N9K-LEAF02
+  # hosts: DC1-N9K-BGW02:DC1-N9K-BGW01
+  connection: local
+  vars_files:
+    - vars/ansible.yml                # All variables start with ans
+    - vars/base.yml                   # All variables start with bse
+    - vars/fabric.yml                 # All variables start with fbc
+    - vars/service_tenant.yml         # All variables start with svc_tnt
+    - vars/service_interface.yml      # All variables start with svc_intf
+    - vars/service_route.yml          # All variables start with svc_rte
+
+
+######################## 1. Validates the input data (in var_files) and creates the file structure ########################
+  pre_tasks:
+    # 1a. Validate that the required elements in the variable files are all defined and in the correct format
+    - name: "Validate the contents of the variable files"
+      block:
+      - name: "PRE_VAL >> Validating the contents of base.yml"
+        assert:
+          # Uses a filter plugin input_validate to do the validating and returns the outcome to the Ansible assert module
+          that: "{{ bse.device_name | input_bse_validate(bse, bse.services | default({}), bse.mgmt_acl | default([])) }} == 'base.yml unittest pass'"
+          fail_msg: "{{ bse.device_name | input_bse_validate(bse, bse.services | default({}), bse.mgmt_acl | default([])) }}"
+        # Makes it conditional, if the var file is defined
+        when: bse is defined
+      - name: "PRE_VAL >> Validating the contents of fabric.yml"
+        assert:
+          that: "{{ fbc.network_size | input_fbc_validate(fbc.num_intf, fbc.route, fbc.acast_gw_mac, fbc.adv.nve_hold_time,
+                    fbc.adv.route, fbc.adv.bse_intf, fbc.adv.lp, fbc.adv.mlag, fbc.adv.addr_incre) }} == 'fabric.yml unittest pass'"
+          fail_msg: "{{ fbc.network_size | input_fbc_validate(fbc.num_intf, fbc.route, fbc.acast_gw_mac, fbc.adv.nve_hold_time,
+                    fbc.adv.route, fbc.adv.bse_intf, fbc.adv.lp, fbc.adv.mlag, fbc.adv.addr_incre) }}"
+        when: fbc is defined
+      - name: "PRE_VAL >> Validating the contents of service_tenant.yml"
+        assert:
+          that: "{{ svc_tnt.tnt | input_svc_tnt_validate(svc_tnt.adv, fbc.adv.mlag) }} == 'service_tenant.yml unittest pass'"
+          fail_msg: "{{ svc_tnt.tnt | input_svc_tnt_validate(svc_tnt.adv, fbc.adv.mlag) }}"
+        when: svc_tnt is defined
+      - name: "PRE_VAL >> Validating the contents of service_interface.yml"
+        assert:
+          that: "{{ svc_intf.intf | input_svc_intf_validate(svc_intf.adv, fbc.network_size, svc_tnt.tnt, bse.device_name,
+                   fbc) }} == 'service_interface.yml unittest pass'"
+          fail_msg: "{{ svc_intf.intf | input_svc_intf_validate(svc_intf.adv, fbc.network_size, svc_tnt.tnt, bse.device_name, fbc) }}"
+        when: svc_intf is defined
+      - name: "PRE_VAL >> Validating the contents of service_route.yml"
+        assert:
+          that: "{{ svc_rte.bgp.group |default () | input_svc_rte_validate(svc_rte.bgp.tnt_advertise |default (), svc_rte.ospf |default (), svc_rte.static_route |default (),
+                    svc_rte.adv, fbc, svc_intf, bse.device_name, svc_tnt.tnt) }} == 'service_route.yml unittest pass'"
+          fail_msg: "{{ svc_rte.bgp.group |default () | input_svc_rte_validate(svc_rte.bgp.tnt_advertise |default (), svc_rte.ospf |default (),
+                        svc_rte.static_route |default (), svc_rte.adv, fbc, svc_intf, bse.device_name, svc_tnt.tnt) }}"
+        when: svc_rte is defined
+      run_once: true        # Doesn't need to run for every hosts as just validating files.
+      tags: [pre_val]
+
+# Use to create new pre_valuation tests or to test any of the existing, just add the assert fail_msg under set_fact
+    # - name: "TO test a new variable file"
+    #   block:
+    #   - set_fact:
+    #       test: "{{ svc_rte.bgp.group |default () | input_svc_rte_validate(svc_rte.bgp.tnt_advertise |default (), svc_rte.ospf |default (),
+    #                     svc_rte.static_route |default (), svc_rte.adv, fbc, svc_intf, bse.device_name, svc_tnt.tnt) }}"
+    #   - debug:
+    #       var=test
+    #   run_once: true
+    #   tags: [test]
+
+    # 1b. Create the file structure
+    - name: "Create the localhost environment"
+      block:
+      - name: "SYS >> Cleaning up the directory"
+        file:
+          path: "{{ ans.dir_path }}"
+          state: absent
+        run_once: true        # Only needs to run for one host as deletes the root directory
+        changed_when: False
+      - name: "SYS >> Creating file structure"
+        file: path="{{ ans.dir_path }}/{{ item }}" state=directory
+        changed_when: False         # Stops it reporting changes in playbook summary
+        # Config stores the config snippets and diff the changes to configuration made
+        loop: [diff, "{{ inventory_hostname }}/config"]
+      check_mode: False             # These tasks still make changes when in check mode
+      tags: [bse, fbc, bse_fbc, tnt, bse_fbc_tnt, bse_fbc_tnt_intf, full]
+
+######################## 2. Create the config snippets from templates ########################
+  tasks:
+    - name: Builds the base config snippet
+      import_role:
+        name: base
+      tags: [bse, bse_fbc, bse_fbc_tnt, bse_fbc_tnt_intf, full]
+    - name: Builds the fabric config snippet
+      import_role:
+        name: fabric
+      tags: [fbc, bse_fbc, bse_fbc_tnt, bse_fbc_tnt_intf, full]
+
+    - name: Builds the tenant config snippets
+      import_role:
+        name: services
+        tasks_from: svc_tnt
+      tags: [tnt, bse_fbc_tnt, bse_fbc_tnt_intf, full]
+
+    - name: Builds the interface config snippets
+      import_role:
+        name: services
+        tasks_from: svc_intf
+      tags: [intf, bse_fbc_tnt_intf, full]
+
+    - name: Builds the tenant routing config snippets
+      import_role:
+        name: services
+        tasks_from: svc_rte
+      tags: [rte, full]
+
+    - name: Interface cleanup
+      import_role:
+        name: intf_cleanup
+      tags: [fbc, bse_fbc, bse_fbc_tnt, bse_fbc_tnt_intf, full]
+
+######################## 3. Join the config snippets into one file and deploy ########################
+  # 3a. Join the all config snippets from the folder into the one big file
+    - name: "SYS >> Joining config snippets into one file"
+      assemble:
+        src: "{{ ans.dir_path }}/{{ inventory_hostname }}/config"
+        dest: "{{ ans.dir_path }}/{{ inventory_hostname }}/config/config.cfg"
+        regexp: '\.conf$'           # Ensures only joins the files created by the roles
+      changed_when: False           # Stops it reporting changes in playbook summary
+      check_mode: False             # These tasks still make changes when in check mode
+      tags: [bse_fbc, bse_fbc_tnt, bse_fbc_tnt_intf, full]
+
+  # 3b. Replace the configuration on the devices with the config in the assembled config file
+    - name: "CFG >> Applying changes using replace config"
+      napalm_install_config:
+        provider: "{{ ans.creds_all }}"
+        dev_os: "{{ ansible_network_os }}"
+        # NXOS takes between 70 to 100 seconds to deploy all changes so default timeout needed increasing
+        timeout: 120
+        config_file: "{{ ans.dir_path }}/{{ inventory_hostname }}/config/config.cfg"
+        commit_changes: True            # Set to true as use Ansible check_mode to do dry runs
+        replace_config: True            # Replacing config rather than merging
+        diff_file: "{{ ans.dir_path }}/diff/{{ inventory_hostname }}.txt"
+        get_diffs: True                 # All diffs re save to file, can user with check-mode to see expected
+      register: changes
+      tags: [bse_fbc, bse_fbc_tnt, bse_fbc_tnt_intf, full]
+
+  # 3c. Rollback changes
+    - name: "RB >> Roll back configuration"
+      block:
+      - name: RB >> Gathering the rollback configuration
+        net_get:
+          src: rollback_config.txt
+          dest :  "{{ ans.dir_path }}/{{ inventory_hostname }}/config/rollback_config.txt"
+        check_mode: False
+        connection: network_cli
+      - name: RB >> Rolling back the configuration
+        napalm_install_config:
+          provider: "{{ ans.creds_all }}"
+          dev_os: "{{ ansible_network_os }}"
+          timeout: 120                    # Needed as with default 60 will timeout before full rollback complete
+          config_file: "{{ ans.dir_path }}/{{ inventory_hostname }}/config/rollback_config.txt"
+          commit_changes: True            # Set to true as use Ansible check_mode to do dry runs
+          replace_config: True            # Replacing config rather than merging
+          diff_file: "{{ ans.dir_path }}/diff/{{ inventory_hostname }}_rollback.txt"
+          get_diffs: True
+        register: changes
+      tags: [rb]
+
+  # 3d. Print the configuration to screen
+    - debug: var=changes.msg.splitlines()
+      tags: [diff]
+
+  # 4. Merge the configuration on the devices with the config in the assembled config file
+    - name: "CFG >> Merging changes with current config"
+      napalm_install_config:
+        provider: "{{ ans.creds_all }}"
+        dev_os: "{{ ansible_network_os }}"
+        # NXOS takes between 70 to 100 seconds to deploy all changes so default timeout needed increasing
+        timeout: 120
+        config_file: "{{ ans.dir_path }}/{{ inventory_hostname }}/config/config.cfg"
+        commit_changes: True            # Set to true as use Ansible check_mode to do dry runs
+        diff_file: "{{ ans.dir_path }}/diff/{{ inventory_hostname }}.txt"
+        get_diffs: True                 # All diffs re save to file, can user with check-mode to see expected
+      register: changes
+      tags: [merge]

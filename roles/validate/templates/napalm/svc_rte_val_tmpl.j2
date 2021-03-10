@@ -1,0 +1,40 @@
+{### Builds validation for service_route.yml ###}
+
+{# Adds the results of this rendered file into the svc_tnt_val_tmpl file #}
+{% extends "napalm/svc_tnt_val_tmpl.j2" %}
+
+{## Checks that the overlay BGP neighbors are up  ##}
+{% block get_bgp_neighbors_vrf %}
+{% for each_grp in svc_rte.bgp.group %}{% for each_pr in each_grp.peer %}
+{% if inventory_hostname in each_pr.switch | default(each_grp.switch) %}
+{% if each_grp.tenant | default(each_pr.tenant) is defined %}
+    {% for each_tnt in each_grp.tenant | default(each_pr.tenant) %}
+{{ each_tnt }}:
+      peers:
+        _mode: strict
+        {{ each_pr.peer_ip }}:
+          remote_as: {{ each_pr.remote_as | default(each_grp.remote_as) }}
+{% endfor %}
+{% endif %}
+{% endif %}
+{% endfor %}{% endfor %}
+          is_enabled: true
+          is_up: true
+{% endblock %}
+
+
+{# Adds to the bse_fbc_val_tmpl.j2 BGP validation, any other peerings in the default global table #}
+{% block get_bgp_neighbors_ipv4_global %}
+{% for each_grp in svc_rte.bgp.group %}{% if each_grp.peer is defined%}
+{% for each_pr in each_grp.peer %}{% if inventory_hostname in each_pr.switch | default(each_grp.switch) %}
+{% if each_grp.tenant | default(each_pr.tenant) is not defined %}
+        {{ each_pr.peer_ip }}:
+          is_enabled: true
+          is_up: true
+          address_family:
+            ipv4:
+              received_prefixes: '>=1'
+{% endif %}
+{% endif %}{% endfor %}
+{% endif %}{% endfor %}
+{% endblock %}

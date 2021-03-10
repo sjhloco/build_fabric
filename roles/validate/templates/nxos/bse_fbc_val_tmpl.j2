@@ -1,0 +1,129 @@
+{### Builds validation for base.yml and fabric.yml. Block inherits from svc_tnt_val_tmpl.j2 ###}
+
+cmds:
+{## show ip ospf neighbors detail ##}
+  - show ip ospf neighbors detail:
+      _mode: strict
+{% if bse.device_name.spine in inventory_hostname %}
+{% for x in groups[bse.device_name.leaf.split('-')[-1].lower()] + groups[bse.device_name.border.split('-')[-1].lower()] %}
+      {{ hostvars[x].intf_lp[0].ip |ipaddr('address') }}:
+        state: FULL
+{% endfor %}{% else %}
+{% for x in groups[bse.device_name.spine.split('-')[-1].lower()] %}
+      {{ hostvars[x].intf_lp[0].ip |ipaddr('address') }}:
+        state: FULL
+{% endfor %}
+{# MLAG peering for leaf and border got based on odd/even hostname and +/- 1 #}
+{% if inventory_hostname[-2:]|int is odd %}
+      {{ intf_lp[0].ip |ipaddr('address') | ipmath(+1) }}:
+        state: FULL
+{% else %}
+      {{ intf_lp[0].ip |ipaddr('address') | ipmath(-1) }}:
+        state: FULL
+ {% endif %}
+
+
+{## show port-channel summary - Inherit adds POs to it ##}
+  - show port-channel summary:
+      {{ fbc.adv.bse_intf.mlag_fmt + fbc.adv.mlag.peer_po |string }}:
+        oper_status: U
+        protocol: LACP
+        members:
+          _mode: strict
+          {{ fbc.adv.bse_intf.intf_fmt + fbc.adv.bse_intf.mlag_peer.split('-')[0] }}:
+            mbr_status: P
+          {{ fbc.adv.bse_intf.intf_fmt + fbc.adv.bse_intf.mlag_peer.split('-')[1] }}:
+            mbr_status: P
+{% block show_port_channel_summary %}
+{% endblock %}
+
+
+{## show vpc - Inherit adds VLANs to it ##}
+  - show vpc:
+      vpc_peer_keepalive_status: peer-alive
+      vpc_peer_status: peer-ok
+      peer-link_po: {{ fbc.adv.bse_intf.mlag_short + fbc.adv.mlag.peer_po |string }}
+{% block show_vpc %}{% if fbc.adv.mlag.peer_vlan == 2 %}
+      peer-link_vlans: "1-2"
+{% else %}
+      peer-link_vlans: "1,{{ fbc.adv.mlag.peer_vlan }}"
+{% endif %}{% endblock %}
+
+
+{## show interfaces_trunk - Inherit adds VLANs to it ##}
+  - show interface trunk:
+      {{ fbc.adv.bse_intf.mlag_fmt + fbc.adv.mlag.peer_po |string }}:
+        allowed_vlans: 1-4094
+{% block show_int_trunk %}{% if fbc.adv.mlag.peer_vlan == 2 %}
+        stpfwd_vlans: "1-2"
+{% else %}
+        stpfwd_vlans: "1,{{ fbc.adv.mlag.peer_vlan }}"
+{% endif %}{% endblock %}
+{% endif %}
+
+
+{## show ip int brief include-secondary vrf all - Inherit adds interfaces to it ##}
+  - show ip int brief include-secondary vrf all:
+      mgmt0:
+        tenant: management
+        prefix: {{ ansible_host }}
+        proto-state: up
+        link-state: up
+        admin-state: up
+{# Creates template for all loopbacks (including secondary mlag ip) and interfaces in default VRF #}
+{%for intf in intf_lp + intf_fbc.keys() | list %}{% if intf.ip is defined %}
+      {{ intf.name | replace('loopback','Lo') }}:
+{% if intf.mlag_lp_addr is defined %}
+        prefix: {{ intf.ip |ipaddr('address'), intf.mlag_lp_addr |ipaddr('address') }}
+{% else %}
+        prefix: {{ intf.ip |ipaddr('address') }}
+{% endif %}{% else %}
+      {{ intf | replace('Ethernet','Eth') }}:
+        prefix: None
+{% endif %}
+        tenant: default
+        proto-state: up
+        link-state: up
+        admin-state: up
+{% endfor %}
+{# The rest of the actions are ONLY performed on the leaf and border switches #}
+{% if bse.device_name.spine not in inventory_hostname %}
+      Vlan{{ fbc.adv.mlag.peer_vlan }}:
+        tenant: default
+        prefix: {{ mlag_peer_ip |ipaddr('address') }}
+        proto-state: up
+        link-state: up
+        admin-state: up
+{% endif %}
+{% block show_ip_int_brief %}
+{% endblock %}
+
+
+{## show nve peers - Inherited ##}
+{% block show_nve_peers %}
+{% endblock %}
+
+
+{## show nve vni - Inherited ##}
+{% block show_nve_vni %}
+{% endblock %}
+
+
+{## show interface status - Inherited ##}
+{% block show_int_status%}
+{% endblock %}
+
+
+{## show ip ospf interface brief vrf all - Inherited ##}
+{% block show_ip_ospf_int_brief%}
+{% endblock %}
+
+
+{## show bgp vrf all ipv4 unicast - Inherited ##}
+{% block show_bgp_vrf_all%}
+{% endblock %}
+
+
+{### show ip route vrf all - Inherited ###}
+{% block show_ip_route_vrf_all%}
+{% endblock %}

@@ -1,0 +1,23 @@
+---
+################ Environmental settings (normally would be in all.yml) ################
+ansible_python_interpreter: "/usr/bin/env python"           # Tells it to use first python pas in ENV
+# Username and password if where using Ansible modules, got from Napalm vars below
+ansible_user: "{{ ans.creds_all.username }}"
+ansible_ssh_pass: "{{ ans.creds_all.password }}"
+
+ans:
+  # Base directory Location to store the generated configuration snippets
+  dir_path: ~/device_configs
+
+  # Connection Variables for Napalm
+  creds_all:
+    hostname: "{{ ansible_host|default(inventory_hostname) }}"
+    username: admin
+    password: ansible
+
+  # Operating system type
+  device_os:
+    spine_os: nxos
+    border_os: nxos
+    leaf_os: nxos
+

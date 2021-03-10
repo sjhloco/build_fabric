@@ -1,0 +1,46 @@
+---
+### Uses napalm_validate to verify that the actual state of LLDP and BGP matches the desired state ###
+
+# 1a. TMPL - BSE_FBC: Creates validation file of expected desired state from the input data
+- name: "NAP_VAL >> Creating bse_fbc validation file"
+  template:
+    src: napalm/bse_fbc_val_tmpl.j2
+    dest: "{{ ans.dir_path }}/{{ inventory_hostname }}/validate/napalm_desired_state.yml"
+  changed_when: False
+  tags: bse_fbc
+
+# 1b. TMPL - BSE_FBC_TNT: Creates validation file of expected desired state from the input data
+- name: "NAP_VAL >> Creating bse_fbc and svc_tnt validation file"
+  template:
+    src: napalm/svc_tnt_val_tmpl.j2
+    dest: "{{ ans.dir_path }}/{{ inventory_hostname }}/validate/napalm_desired_state.yml"
+  changed_when: False
+  tags: [bse_fbc_tnt, bse_fbc_tnt_intf]
+
+# 1c. TMPL - BSE_FBC_TNT_RTE: Creates validation file of expected desired state from the input data
+- name: "NAP_VAL >> Creating bse_fbc, svc_tnt and svc_rte validation file"
+  template:
+    src: napalm/svc_rte_val_tmpl.j2
+    dest: "{{ ans.dir_path }}/{{ inventory_hostname }}/validate/napalm_desired_state.yml"
+  changed_when: False
+  tags: [bse_fbc_tnt, bse_fbc_tnt_intf, full]
+
+# 2. NAPALM: Napalm_validate used to gather and compare actual and desired state on all device types
+- name: "Create napalm compliance report"
+  block:
+  - name: "NAP_VAL >> Gathering actual state from the devices and validating"
+    # Generates actual_state and compares against the desired state
+    napalm_validate:
+      provider: "{{ ans.creds_all }}"
+      dev_os: "{{ ansible_network_os }}"
+      # Have to use filter plugin as napalm_validate wont take ~/ so filter gets full path
+      validation_file: "{{ ans.dir_path | fix_home_path() }}/{{ inventory_hostname }}/validate/napalm_desired_state.yml"
+    register: nap_val
+    ignore_errors: yes            # Needed so continues if this play fails (validation failed)
+
+# 3. REPORT: The compliance Report is saved to file no matter what the outcome. Output to screen is not verbose unless non-compliant.
+  - name: "NAP_VAL >> Saving compliance report to {{ ans.dir_path }}/reports/"
+    copy: content="{{ nap_val.compliance_report }}" dest={{ ans.dir_path }}/reports/{{ inventory_hostname }}_compliance_report.json
+    changed_when: False
+    ignore_errors: yes          # Needed so continues if this play fails (validation failed)
+  tags: [bse_fbc, bse_fbc_tnt, bse_fbc_tnt_intf, full]

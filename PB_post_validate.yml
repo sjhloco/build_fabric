@@ -1,0 +1,52 @@
+---
+# This playbook is used to to validate the deployed leaf and spine fabric
+
+- name: "validate Leaf and Spine DC"
+  hosts: all
+
+  connection: local
+  vars_files:
+    - vars/ansible.yml                  # All variables start with ans.
+    - vars/base.yml                     # All variables start with bse.
+    - vars/fabric.yml                   # All variables start with fbc.
+    - vars/service_tenant.yml           # All variables start with svc_tnt
+    - vars/service_interface.yml        # All variables start with svc_intf
+    - vars/service_route.yml            # All variables start with svc_rte
+
+######################## 4. Produce reports on fabric actual Vs desired state ########################
+# None of the validation tasks will run if it is in check-mode, although building the template file will be run
+  pre_tasks:
+    # Create the file structure
+    - name: "SYS >> Creating file structure"
+      file: path="{{ ans.dir_path }}/{{ item }}" state=directory
+      changed_when: False         # Stops it reporting changes in playbook summary
+      # Validate stores the desired_state files and reports the compliance result of desired Vs expected state
+      loop: ["{{ inventory_hostname }}/validate", reports]
+      check_mode: False             # These tasks still make changes when in check mode
+      tags: [bse_fbc, bse_fbc_tnt, bse_fbc_tnt_intf, full]
+
+  # Import the services role so that the filter plugin within it can be used to create the tenant, interface and routing data models
+  roles:
+    - services
+
+  tasks:
+    - name: Import napalm_validate tasks to compare actual vs desired state
+      import_role:
+        name: validate
+        tasks_from: nap_val
+
+    - name: Import custom_validate tasks to compare actual vs desired state
+      import_role:
+        name: validate
+        tasks_from: cus_val
+
+    - name: "Loads validation report and checks whether it complies (passed)"
+      block:
+      - include_vars: "{{ ans.dir_path }}/reports/{{ inventory_hostname }}_compliance_report.json"
+      - name: "POST_VAL >> Compliance check failed"
+        fail:
+          msg: "Non-compliant state encountered. Refer to the full report
+                'cat {{ ans.dir_path }}/reports/{{ inventory_hostname }}_compliance_report.json | python -m json.tool"
+        when: not complies
+      tags: [bse_fbc, bse_fbc_tnt, bse_fbc_tnt_intf, full]
+

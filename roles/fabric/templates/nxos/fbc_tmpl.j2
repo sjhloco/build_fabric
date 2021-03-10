@@ -1,0 +1,149 @@
+{####### Allows use of an SVI over underlay (backkup link over VPC). vNOXS does not take this cmd, unhash on physical #######}
+{# system nve infra-vlans {{ fbc.adv.mlag.peer_vlan }} #}
+
+{####### Loopback interfaces #######}
+{% for lp in intf_lp %}
+interface {{ lp.name }}
+  description {{ lp.descr }}
+  ip address {{ lp.ip }}
+{% if lp |length  == 4 %}
+  ip address {{ lp.mlag_lp_addr }} secondary
+{% endif %}
+  ip router ospf {{ fbc.route.ospf.pro }} area {{ fbc.route.ospf.area }}
+  no shutdown
+{% endfor %}
+
+{####### Fabric interfaces #######}
+{% for intf, descr in intf_fbc.items() %}
+interface {{ intf }}
+  description {{ descr }}
+  mtu 9216
+  no shutdown
+  no switchport
+  medium p2p
+  ip unnumbered {{ intf_lp[0]['name'] }}
+  ip router ospf {{ fbc.route.ospf.pro }} area {{ fbc.route.ospf.area }}
+  no ip ospf passive-interface
+  ip ospf hello-interval {{ fbc.adv.route.ospf_hello }}
+{% if fbc.route.authentication is defined %}
+  ip ospf message-digest-key 1 md5 {{ fbc.route.authentication }}
+{% endif %}{% endfor %}
+
+{% if bse.device_name.spine not in inventory_hostname %}
+vlan {{ fbc.adv.mlag.peer_vlan }}
+  name UND_BACKUP_PATH_VL2
+interface Vlan {{ fbc.adv.mlag.peer_vlan }}
+  description underlay backup path over VPC peer-link
+  no shutdown
+  medium p2p
+  no bfd echo
+  no ip redirects
+  no ipv6 redirects
+  ip address {{ mlag_peer_ip }}
+  ip router ospf {{ fbc.route.ospf.pro }} area {{ fbc.route.ospf.area }}
+  no ip ospf passive-interface
+{% if fbc.route.authentication is defined %}
+  ip ospf message-digest-key 1 md5 {{ fbc.route.authentication }}
+{% endif %}
+
+{####### VPC Configuration #######}
+{% if intf_mlag_kalive is defined %}
+{% set vrf =  'vrf ' + fbc.adv.mlag.kalive_vrf %}
+vrf context {{ fbc.adv.mlag.kalive_vrf }}
+{% for intf, descr in intf_mlag_kalive.items() %}
+interface {{ intf }}
+  description {{ descr }}
+  no switchport
+  vrf member {{ fbc.adv.mlag.kalive_vrf }}
+  ip address {{ mlag_kalive_ip }}
+  no shutdown
+{% endfor %}{% endif %}
+
+vpc domain {{ fbc.adv.mlag.domain }}
+  peer-switch
+{# Devices with odd hostname get lowest VPC priority #}
+{% if inventory_hostname[-2:]|int is odd %}
+  role priority 8192
+{# Keepalive peer uses mgmt interface with IP worked out based on odd/even name (add/minus +1) #}
+  peer-keepalive destination {{ mlag_kalive_ip |ipaddr('address') |ipmath(1) }} source {{ mlag_kalive_ip |ipaddr('address') }} {{ vrf | default() }}
+{% else %}
+  role priority 16384
+  peer-keepalive destination {{ mlag_kalive_ip |ipaddr('address') | ipmath(-1) }} source {{ mlag_kalive_ip |ipaddr('address') }} {{ vrf | default() }}
+{% endif %}
+  peer-gateway
+  layer3 peer-router
+  auto-recovery
+  fast-convergence
+  ip arp synchronize
+
+{####### VPC peer-link Config (has to be after VPC config) #######}
+{% for intf, descr in intf_mlag_peer.items() %}
+interface {{ intf }}
+  description {{ descr }}
+  switchport
+  spanning-tree port type network
+{% if fbc.adv.bse_intf.mlag_fmt in intf %}
+  switchport mode trunk
+  switchport trunk allowed vlan 1-4094
+  vpc peer-link
+{% else %}
+  channel-group {{ fbc.adv.mlag.peer_po }} force mode active
+{% endif %}
+  no shutdown
+{% endfor %}
+
+{####### VXLAN Configuration #######}
+interface nve1
+  advertise virtual-rmac
+  no shutdown
+  host-reachability protocol bgp
+  source-interface {{ intf_lp[1]['name'] }}
+  source-interface hold-down-time {{ fbc.adv.nve_hold_time }}
+  global suppress-arp
+  global ingress-replication protocol bgp
+{# Only adds the leafs as they are the only devices with SVIs  #}
+fabric forwarding anycast-gateway-mac {{ fbc.acast_gw_mac }}
+{% endif %}
+
+{####### Routing Configuration #######}
+router ospf {{ fbc.route.ospf.pro }}
+  router-id {{ intf_lp[0]['ip'].split('/') | first }}
+  passive-interface default
+  auto-cost reference-bandwidth 100000 Mbps
+{# Spines dont need BFD, Leaf and borders do for peering over VPC link #}
+{% if bse.device_name.spine in inventory_hostname %}
+  bfd
+{% endif %}{% if fbc.route.authentication is defined %}
+  area {{ fbc.route.ospf.area }} authentication message-digest
+{% endif %}
+
+router bgp {{ fbc.route.bgp.as_num }}
+  router-id {{ intf_lp[0]['ip'].split('/') | first }}
+  address-family l2vpn evpn
+{% if bse.device_name.spine not in inventory_hostname %}
+    advertise-pip
+{% else %}
+    retain route-target all
+{% endif %}
+  template peer TPL_DC_OVERLAY
+    remote-as {{ fbc.route.bgp.as_num }}
+    update-source {{ intf_lp[0]['name'] }}
+    timers {{ fbc.adv.route.bgp_timers[0] }} {{ fbc.adv.route.bgp_timers[1] }}
+    address-family l2vpn evpn
+      send-community
+      send-community extended
+{# Spines need to be Route Reflectors #}
+{% if bse.device_name.spine in inventory_hostname %}
+      route-reflector-client
+{# loop through the leaf and border groups and get loopback hostvar #}
+{% for dvc in groups[bse.device_name.leaf.split('-')[-1].lower()] + groups[bse.device_name.border.split('-')[-1].lower()] %}
+  neighbor {{ hostvars[dvc]['intf_lp'][0]['ip'] |ipaddr('address') }}
+    description {{ dvc }}
+    inherit peer TPL_DC_OVERLAY
+{% endfor %}
+{% else %}
+{% for sp in groups[bse.device_name.spine.split('-')[-1].lower()] %}
+  neighbor {{ hostvars[sp]['intf_lp'][0]['ip'] |ipaddr('address') }}
+    description {{ sp }}
+    inherit peer TPL_DC_OVERLAY
+{% endfor %} {% endif %}

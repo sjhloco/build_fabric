@@ -1,0 +1,8 @@
+---
+### Uses template to build the fabric configuration using mostly the variables from fabric.yml) ###
+- name: "FBC >> Generating fabric config snippets"
+  template:
+    src: "{{ ansible_network_os }}/fbc_tmpl.j2"
+    dest: "{{ ans.dir_path }}/{{ inventory_hostname }}/config/fabric.conf"
+  changed_when: False           # Stops it reporting changes in playbook summary
+  check_mode: False             # These tasks still make changes when in check mode

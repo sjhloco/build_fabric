@@ -1,0 +1,80 @@
+---
+################ Variables used to decide how the fabric will look ################
+# This Only scales to 4 spines, 10 leafs, 4 borders. By default the following ports are used:
+# SPINE-to-LEAF = Eth1/1 - 1/10                         SPINE-to-Border = Eth1/11 - 1/14
+# LEAF-to-SPINE = Eth1/1 - 1/4                          BORDER-to-SPINE: = Eth1/1 - 1/4
+# MLAG Peer-link = Eth1/5 - 1/6                         MLAG keepalive = mgmt
+
+# How big the network is, so the number of each switch. border/leaf must be in increments of 2 as in MLAG pair
+fbc:
+  network_size:
+    num_spine: 2                             # Can be 1 to 4
+    num_border: 2                            # Can be 0, 2 or 4
+    num_leaf: 2                              # Can be 2, 4, 6, 8 or 10
+# Number of interfaces on the device (first and last interface). Is needed to make interfaces declarative and default all interfaces not used
+  num_intf:
+    spine: 1,64
+    border: 1,64
+    leaf: 1,64
+
+# To change Fabric routing protocol settings
+  route:
+    ospf:
+      pro: 'DC_UNDERLAY'                     # Can be numbered or named
+      area: 0.0.0.0                          # Must be in dotted decimal format
+    bgp:
+      as_num: 65001
+    authentication: my_password              # Authentication is enabled for both OSPF and BGP with same password. Hash to disable
+  acast_gw_mac: 0000.2222.3333               # Must be in the format xxxx.xxxx.xxxx
+
+################ Advanced settings to further customize the fabric ################
+  adv:
+    nve_hold_time: 120                      # Hold down timer that NXOS waits before bringing up the NVE interface (NXOS default is 180 seconds)
+    # Routing protocol timers
+    route:
+      ospf_hello: 2                          # Default hello used for OSPF peering (dead time x4 of this)
+      bgp_timers: [3, 9]                     # Default timers used by BGP groups for all peers. Must be a list of [hello, holdtime]
+    # Seed interfaces used to create the fabric. These are the first interfaces used, the inventory plugin increments them
+    bse_intf:
+      intf_fmt: Ethernet1/                   # Interface naming format
+      intf_short: Eth1/                      # Short interface name used in interface descriptions
+      mlag_fmt: port-channel                 # MLAG interface naming format
+      mlag_short: Po                         # Short MLAG interface name used in MLAG interface descriptions
+      lp_fmt: loopback                       # Loopback interface naming format
+      sp_to_lf: 1                            # First interface used for SPINE to LEAF links (1 to 10)
+      sp_to_bdr: 11                          # First interface used for SPINE to BORDER links (11 to 14)
+      lf_to_sp: 1                            # First interface used LEAF to SPINE links (1 to 4)
+      bdr_to_sp: 1                           # First interface used BORDER to SPINE links (1 to 4)
+      mlag_peer: 5-6                         # Interfaces used for the MLAG peer Link
+      mlag_kalive: 7                         # Interface for the keepalive. If it is not an integer uses the management interface
+    # Loopback interfaces to be used by the fabric, numbers and descriptions can be changed.
+    lp:
+      rtr:
+        num: 1                               # The loopback number, is added to fbc.adv.lp_fmt so would be loopback1
+        descr: LP > Routing protocol RID and peerings
+      vtep:
+        num: 2
+        descr: LP > VTEP Tunnels (PIP) and MLAG (VIP)
+      bgw:
+        num: 3                               # Added now incase add multi-site to the script
+        descr: LP > BGW anycast address
+    # All MLAG specific settings except for peer Link interfaces (bse.adv.base_intf.mlag_peer) and subnet (bse.addr.mlag_peer_net)
+    mlag:
+      domain: 1                              # MLAG Domain number
+      peer_po: 1                             # Port-channel used for peer-link
+      peer_vlan: 2                           # VLAN used for OSPF peering over the peer-link
+      kalive_vrf: VPC_KEEPALIVE              # VRF name for keepalive link. Only needed if management interface is not used for the keepalive
+
+  # The increment that is added to the subnet and device hostname number to generate the unique last octet of the IP addresses
+    addr_incre:
+      spine_ip: 11                           # Spine mgmt and routing loopback addresses (will be from .11 to .14)
+      border_ip: 16                          # Border mgmt and routing loopback addresses (will be from .16 to .19)
+      leaf_ip: 21                            # Leaf mgmt and routing loopback addresses (will be from .21 to .30)
+      border_vtep_lp: 36                     # Border VTEP (PIP) loopback addresses (will be from.36 to .39)
+      leaf_vtep_lp: 41                       # Leaf VTEP (PIP) loopback addresses (will be from .41 to .50)
+      border_mlag_lp: 56                     # Shared MLAG anycast (VIP) loopback addresses for each pair of borders (default .56 to .57)
+      leaf_mlag_lp: 51                       # Shared MLAG anycast (VIP) loopback addresses for each pair of leafs (default .51 to .55)
+      border_bgw_lp: 58                      # Shared BGW MS anycast loopback addresses for each pair of borders (default .58 to .59)
+      mlag_leaf_ip: 1                        # Start IP for leaf OSPF peering over peer-link (default LEAF1 is .1, LEAF2 is .2, LEAF3 is .5, etc)
+      mlag_border_ip: 21                     # Start IP for border OSPF peering over peer-link (default BORDER1 is .21, BORDER3 is .25, etc)
+      mlag_kalive_incre: 28                  # Increment added to leaf/border increment (mlag_leaf_ip/mlag_border_ip) for keepalive addresses

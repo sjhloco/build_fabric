@@ -1,0 +1,104 @@
+{### Builds validation for services_tenant.yml. Block inherits from svc_intf_val_tmpl.j2 and extends to bse_fbc_val_tmpl.j2 ###}
+
+{## Logic to decide which set of variables in flt_svc_tnt to render dependant on device-role ##}
+{% if bse.device_name.leaf in inventory_hostname %}
+{% set flt_vars = flt_svc_tnt[0] %}{% set stp_fwd_vlans = flt_svc_tnt[2] %}
+{% elif bse.device_name.border in inventory_hostname %}
+{% set flt_vars = flt_svc_tnt[1] %}{% set stp_fwd_vlans = flt_svc_tnt[3] %}
+{% endif %}
+
+{## Adds the results of this rendered file into the bse_fbc_val_tmpl file ##}
+{% extends ansible_network_os + "/bse_fbc_val_tmpl.j2" %}
+
+
+{## show port-channel summary - Inherited ##}
+{% block show_port_channel_summary %}
+{% endblock %}
+
+
+{## show vpc - Inherit adds vPCs to it ##}
+{% block show_vpc %}
+      peer-link_vlans: {{ stp_fwd_vlans }}
+{% endblock %}
+
+
+{## show interfaces_trunk - Inherit adds VLANs to it ##}
+{% block show_int_trunk %}
+        stpfwd_vlans: {{ stp_fwd_vlans }}
+{% endblock %}
+
+
+{## show ip int brief include-secondary vrf all - Inherit adds interfaces to it ##}
+{% block show_ip_int_brief %}
+{% if bse.device_name.spine not in inventory_hostname %}
+{% for flt_tnt in flt_vars %}{% if flt_tnt.l3_tnt is sameas true %}
+{% for vl in flt_tnt.vlans %}
+{% if vl.ip_addr == 'l3_vni' or vl.ip_addr |ipaddr('address') != False %}
+      Vlan{{ vl.num }}:
+{% if vl.ip_addr != 'l3_vni' %}
+        prefix: {{ vl.ip_addr |ipaddr('address') }}
+{% endif %}
+        tenant: {{ flt_tnt.tnt_name }}
+        proto-state: up
+        link-state: up
+        admin-state: up
+{% endif %}{% endfor %}{% endif %}{% endfor %}
+{% endif %}{% endblock %}
+
+
+{## show nve peers ##}
+{% block show_nve_peers %}
+{% if bse.device_name.spine not in inventory_hostname %}
+  - show nve peers:
+{# vPC neighbors loopback address for NVE peer is worked out based on odd/even name (add/minus +1) #}
+{% if inventory_hostname[-2:]|int is odd %}
+      {{ intf_lp[1].ip |ipaddr('address') |ipmath(1) }}:
+{% else %}
+      {{ intf_lp[1].ip |ipaddr('address') |ipmath(-1) }}:
+{% endif %}
+        peer-state: Up
+{# vPC VIP is shared so only need off one in VPC pair (odd numbered device), also not this devices pair #}
+{% for host in groups[bse.device_name.leaf.split('-')[-1].lower()] + groups[bse.device_name.border.split('-')[-1].lower()] %}
+{% if host[-2:]|int is odd %}{% if hostvars[host].intf_lp[1].mlag_lp_addr != hostvars[inventory_hostname].intf_lp[1].mlag_lp_addr %}
+      {{ hostvars[host].intf_lp[1].mlag_lp_addr |ipaddr('address') }}:
+        peer-state: Up
+{% endif %}{% endif %}
+{% endfor %}{% endif %}
+{% endblock %}
+
+
+{## show nve vni ##}
+{% block show_nve_vni %}{% if bse.device_name.spine not in inventory_hostname %}
+  - show nve vni:
+      _mode: strict
+{% for flt_tnt in flt_vars %}{% for vl in flt_tnt.vlans %}
+{% if vl.ip_addr != 'l3_vni' and vl.vxlan == True %}
+      "{{ vl.vni }}":
+        type: L2 [{{ vl.num }}]
+        state: Up
+{% endif %}{% if flt_tnt.l3_tnt is sameas true and vl.ip_addr == 'l3_vni' %}
+      "{{ vl.vni }}":
+        type: L3 [{{ flt_tnt.tnt_name }}]
+        state: Up
+{% endif %}{% endfor %}{% endfor %}
+{% endif %}{% endblock %}
+
+
+{## show interface status - Inherited ##}
+{% block show_int_status%}
+{% endblock %}
+
+
+{## show ip ospf interface brief vrf all - Inherited ##}
+{% block show_ip_ospf_int_brief%}
+{% endblock %}
+
+
+{## show bgp vrf all ipv4 unicast - Inherited ##}
+{% block show_bgp_vrf_all%}
+{% endblock %}
+
+
+{### show ip route vrf all - Inherited ###}
+{% block show_ip_route_vrf_all%}
+{% endblock %}

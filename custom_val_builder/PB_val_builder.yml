@@ -1,0 +1,60 @@
+---
+- name: "Create a Custom Validation"
+  # hosts: all
+  # hosts: DC1-N9K-LEAF01:DC1-N9K-LEAF02
+  hosts: DC1-N9K-BORDER01
+  connection: local
+  vars_files:
+  # Can use files from main playbook (../vars) or in the vars folder for custom_val_builder
+    - ../vars/ansible.yml
+    - ../vars/fabric.yml
+    - ../vars/base.yml
+    - ../vars/service_tenant.yml
+    - ../vars/service_interface.yml
+    - ../vars/service_route.yml
+    - vars/my_vars.yml
+
+  tasks:
+    # TEMPLATE: Creates validation file of expected desired state by rendering input data with val_tmpl.j2
+    - name: "SYS >> Rendering 'val_tmpl.j2' to create 'desired_state.yml'"
+      template:
+        src: "templates/val_tmpl.j2"
+        dest: "files/desired_state.yml"
+      tags: [tmpl, rpt_file, report]
+    # PRINT: the rendered template (desired_state.yml file) to screen
+    - block:
+      - include_vars: "files/desired_state.yml"
+      - debug: var=cmds
+      tags: [tmpl]
+
+    # RUN_COMMANDS: napalm_cli runs (loops through) the commands got from desired_state.yml against a device
+    - block:
+      - include_vars: "files/desired_state.yml"
+      - name: "NET >> Running commands against a device"
+        napalm_cli:
+          provider: "{{ ans.creds_all }}"
+          dev_os: "{{ ans.device_os.border_os }}"
+          args:
+            commands:
+              - "{{ item.keys() | list | first }} | json"
+        register: output
+        loop: "{{ cmds }}"
+        loop_control:
+          label: "{{ item.keys() | list | first }}"
+    # DM_REPORT: Feeds output from devices through val_builder plugin to create DM and possibly a compliance report
+      - name: "CUS_VAL >> Creating DM and possibly compliance report"
+        set_fact:
+          validate_result: "{{ cmds | val_builder(output.results, ansible_run_tags) }}"
+      - debug: var=validate_result
+      tags: [disc, dm, report]
+
+    # REPORT_FILE: Runs custom_validate using a static input file (file_input.json) with DM of the device output
+    - name: "SYS >> Creating compliance report from 'file_input.json' static input file"
+      block:
+      - include_vars: "files/desired_state.yml"
+      - set_fact:
+          validate_result: "{{ cmds | val_builder(lookup('file','files/file_input.json'), ansible_run_tags) }}"
+      - debug: var=validate_result
+      tags: [rpt_file]
+
+

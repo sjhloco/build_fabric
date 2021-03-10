@@ -1,0 +1,183 @@
+###################### Service: Routing Protocols ######################
+svc_rte:
+  bgp:
+    group:
+      - name: IN ET
+        ebgp_multihop: 256
+        timers: '[10,31]'
+        switch: [DC1-N9K-LEAF01]
+        tenant: [RED]
+        remote_as:
+        next_hop_self: False
+        inbound:
+          allow: 55
+        outbound:
+          med: {50: [10.20.10.0/24], 100: an}
+          as_prepend: {1: default, 5h: [10.10.24.0/24]}
+          allow: [10.16.10.0/24 le 28 ge 33]
+        peer:
+          - name: G TT
+            update_source: Loopback99
+            ebgp_multihop: rr
+            remote_as: 88
+            peer_ip: 1.1.1.600
+            descr: GTT Internet Peering
+            tenant: [BLU, AMB]
+            password: my_pa55 w0rd
+            outbound:
+              allow: {21.6.12.516/28, 21.6.12.32/28}
+              deny: default
+          - name: Colt
+            timers: [ten,31]
+            remote_as: 99
+            peer_ip: 2.2.2.2
+            descr: Colt Internet Peering
+            tenant: [BLU]
+            switch: [DC1-N9K-BORDER01]
+            next_hop_self: Tru
+            inbound:
+              weight: {50: deny, 100: [10.14.10.0/24, any]}
+              pref: {10: [10.50.10.0/24], 20: [10.16.10.0/24, 10.16.10.0/23, 10.16.10.0/23 l 24, 11.16.10.0/24 ge 24]}
+              deny: [10.70.10.0/24, 10.70.10.0/24, 10.70.20.0/24, 10.70.20.0/24, 90.70.10.0/24]
+              allow: [10.10.170.0/24]
+      - name: Colt
+        remote_as: 65001
+        default: Tru
+        switch: [DC1-N9K-LEAF01, DC1-N9K-LEAF02]
+        tenant: [BLU]
+        bfd: Tru
+        peer:
+          - name: Colt
+            update_source: loopback1
+            peer_ip: 192.168.55.99
+            descr: GTT1 Internet Peering
+
+# Tenants holds the per-VRF specific configuration such as network, summary and redistribution
+    tnt_advertise:
+      - name: BLU
+        switch: [DC1-N9K-LEAF02]
+        network:
+          - prefix: [1.1.1.0/24, 2.2.2.0/33, 1.1.1.1/32]
+            switch: [DC1-N9K-LEAF01]
+          - prefix: [8.8.288.0/24]
+        summary:
+          - prefix: [2.2.1.0/24, 2.2.2.0/24, 2.2.1.0/24, 2.2.1.0/24]
+          - prefix: [3.3.3.0/24]
+            switch: DC1-N9K-LEAF09
+            filter: summary_onl
+        redist:
+          - type: ospf_98
+            allow: [1.1.1.0/24 le 20 ge40, 1.1.1.0/24, 991.1.1.0/24, 1.1.1.0/24]
+            metric: {5j0: [110.10.10.0/24], 100: [102.10.10.0/24, 10.10.120.0/24], 70: default}
+          - type: static
+            allow: defau
+            metric: 1
+          - type: connected
+            allow: [Ethernet1/33, loopback99]
+            switch: [DC1-N9K-LEAF01, DC1-N9K-LEAF02]
+      - name: RED
+        switch: [DC1-N9K-LEAF01]
+        network:
+          - prefix: [3.3.3.0/24, 4.4.4.0/24]
+        redist:
+          - type: ospf_198
+            allow: {test: 10}
+            metric: {50: [110.10.10.0/24, 110.10.10.0/24], 100: [102.10.10.0/24, 10.10.120.0/24], 70: defau}
+            switch: [DC1-N9K-BORDER01]
+          - type: static
+            allow: defau
+            metric: {1: 1}
+            switch: DC1-N9K-BORDER01
+
+# Per OSPF process
+#   ospf:
+#     - process: 98
+#       tenant: BLU
+#       rid: 1.1.1.444
+#       bfd: Tru
+#       default_orig: alway
+#       switch: [DC1-N9K-BORDER04]
+#       interface:
+#         - name: [Vlan13]
+#           area: 0.0.0.266
+#           area_type: sstub
+#           timers: [3,ten]
+#           authentication: pass word
+#         - name: [Ethernet1/33, Vlan10, Vlan44]
+#           switch: [DC1-N9K-LEAF01]
+#           area: 0.0.0.29
+#           area_type: nssa no-summary
+#           cost: 2000000
+#           passive: Tru
+#           timers: 3,9
+#           type: point-to-
+#       summary:
+#         - prefix: [2.2.2.0/34, 3.3.3.0/24]
+#           filter: not-advertis
+#           switch: [DC1-N9K-LEAF01, DC1-N9K-LEAF02]
+#         - prefix: [4.2.2.0/24]
+#           area: 999.0.0.29
+#       redist:
+#         - type: bgp_65001
+#           allow: [1.455.1.0/24]
+#           metric: {5a0: [110.10.550.0/24], 100: an1y, 200: [110.10.10.0/24, 110.10.10.0/24]}
+#         - type: static
+#           allow: anyg
+#           metric: {1: 1}
+#         - type: ospf_99
+#           allow: 1
+#           metric: 1
+#         - type: connected
+#           allow: [Ethernet1/33, Ethernet1/200]
+#           switch: [DC1-N9K-BORDER01, DC1-N9K-LEAF01]
+#     - process: 99
+#       tenant: RED
+#       switch: [DC1-N9K-LEAF01]
+#       interface:
+#         - name: [Vlan13]
+#           area: 0.0.0.266
+
+# # Per tenant static routes
+#   static_route:
+#     - tenant: [BLU]
+#       switch: [DC1-N9K-LEAF01]
+#       route:
+#       - prefix: [10.10.10.0/24, 10.10.20.0/24]
+#         gateway: 1.1.1.1
+#         interface: Ethernet1/38
+#         switch: [DC1-N9K-LEAF01, DC1-N9K-LEAF02]
+#       - prefix: [20.10.10.0/33]
+#         gateway: 1.1.1.1
+#         ad: 0
+#         next_hop_vrf: AMB
+#       - prefix: [30.10.10.0/24, 30.20.20.0/24, 30.10.10.0/24]
+#         gateway: 1.1.1.333
+#     - tenant: [RED]
+#       route:
+#       - prefix: [50.10.10.0/24]
+#         gateway: 2.1.1.1
+#         ad: 30
+#         next_hop_vrf: BLU
+#         switch: [DC1-N9K-BORDER01, DC1-N9K-BORDER03]
+
+# Advanced variables ####
+  adv:
+    ospf_hello: two                                 # Default hello used for OSPF peering (dead time x4 of this)
+    bgp_timers: [3, 9g]                            # Default timers used by BGP groups for all peers
+    bgp_naming:                                   # Naming of prefix-lists and Route-maps used by bgp
+      rm_in: RM_nam_IN
+      rm_out: RM_name_OUT
+      pl_in: PL_name_IN
+      pl_out: PL_name_OUT
+      pl_wght_in: PL_name_WGHT_IN
+      pl_pref_in: PL_name_PREFval_IN
+      pl_med_out: PL_name_MEDval_OUT
+      pl_aspath_out: PL_name_AS+val_OUT
+    dflt_pl:
+        pl_deny:
+        pl_allow: PL_ALLOW_ALL
+        pl_default: PL_DEFAULT
+    redist:
+      rm_name: RM_as_to_dst
+      pl_name: PL_src_to_dst
+      pl_metric_name: PL_src_to_dst_ME

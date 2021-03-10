@@ -1,0 +1,63 @@
+---
+################ Variables used to create core elements of the device configs ################
+# Naming structure that is added before the automatically generated node number (0x). Groups are created based on the name (i.e spine, border, leaf)
+bse:
+  device_name:    # Must contain - and characters after - must be either letters, digits or underscore (used as the group name)
+    spine: 'DC1-N9K-SPINE'
+    border: 'DC1-N9K-BORDER'
+    leaf: 'DC1-N9K-LEAF'
+  # Ranges from which device addresses are created from. Must have the mask in prefix format (/)
+  addr:                                 # Except for mgmt_gw all need to be al least /26 or /27
+    lp_net: '192.168.101.0/24'          # Routing (OSPF/BGP), VTEP and VPC, /26. Range addresses are from, mask will be /32. By default will use .11 to .59
+    mgmt_net: '10.10.108.0/24'          # Needs to be at least /27 to cover max spine (4), leafs (10) and borders (4)
+    mlag_peer_net: '192.168.202.0/24'   # Split into /30 per-switch pair for OSPF over peer link. /26 if using same range for keepalive
+    mlag_kalive_net: '10.10.10.0/24'    # Optional keepalive address range. If not set uses *mlag_peer_net*
+    mgmt_gw: 10.10.108.1                # Default gateway for management traffic
+  users:
+    - username: admin
+      password: $5$ugYwyCgs$CSnUuaIxlxXHRw/Nq3hKU9gfkA8Y2fYHiTZeDFSXik3      # Passwords must be entered encrypted type-5
+      role: network-admin
+
+  # Details for all the services that the switches consume. All services are optional, hash out what don't need
+  services:
+    domain: 'stesworld.com'
+    # src_intf: Ethernet1/1                # Only need to set if not using mgmt interface and VRF
+    dns:
+      prim: 10.10.10.41
+      sec: 10.10.10.42
+    # tacacs:
+    #   grp_name: ISE_TACACS
+    #   key: vagzjefjq                     # Must be entered encrypted type-6
+    #   server:
+    #     - 10.10.10.51
+    #     - 10.10.10.52
+    #     - 10.10.10.53
+    snmp:
+      host: 10.10.10.43
+      comm: 5NMPC0MMUN1TY
+    ntp:
+      server:
+        - 10.10.10.45
+        - 10.10.20.46
+    log:
+      server:
+        - 10.10.10.47
+        - 10.10.20.48
+      # level: 4                            # Unhash to change syslog servers logging level from the default of 5-notif
+
+  # Management access-lists. They must be defined, source is a list and can be an IP or the keyword 'any'
+  mgmt_acl:
+    - acl_name: SNMP_ACCESS
+      source: [any]
+      port: [udp, snmp]
+    - acl_name: SSH_ACCESS
+      source: [10.10.10.0/24, any]
+      port: [tcp, 22]
+
+  # Advanced base configuration that is less likely to be changed
+  adv:
+    image: nxos.9.3.5.bin
+    image_version: 9.3(5)          # See caveats in README, if not correct checkpoint config_replace will fail on NXOS
+    exec_timeout:
+      console: 0
+      vty: 15

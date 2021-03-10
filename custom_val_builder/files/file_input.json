@@ -1,0 +1,16 @@
+{
+    "show ip ospf interface brief vrf all": {
+        "Eth1/1": {
+            "area": "0.0.0.0",
+            "nbr_count": "1",
+            "proc": "DC_UNDERLAY",
+            "status": "up"
+        },
+        "Eth1/11": {
+            "area": "0.0.0.99",
+            "nbr_count": "1",
+            "proc": "99",
+            "status": "up"
+        }
+    }
+}

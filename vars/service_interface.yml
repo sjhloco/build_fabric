@@ -1,0 +1,177 @@
+###################### Service: Device Ports ######################
+# By default all interfaces are LACP *'active'* dual-homed interfaces. The VPC number can not be changed, is always the port-channel number
+# Interfaces and POs can be assigned from a pool defined under advanced or specified manually
+# If the tenant (VRF) is not defined for a layer3 or loopback interface it will be created in the global routing table
+
+# There are 7 pre-defined types of interface that can be deployed:
+# -access: A single VLAN layer2 access port. STP is set to 'edge'
+# -stp_trunk: A trunk going to a device that supports Bridge Assurance. STP is set to 'network'
+# -stp_trunk_non_ba: Same as stp_trunk except that STP is set to 'normal' to support devices that don't use BA
+# -non_stp_trunk: A trunk port going to a device that doesn't support BPDU. STP set to 'edge' and BPDU Guard enabled
+# -layer3: A non-switchport layer3 interface with an IP address. Must be single-homed as MLAG not supported for L3 interfaces
+# -loopback: A loopback interface with an IP address (must be single-homed)
+# -svi: To define a SVI the VLAN must exist under service_tenant and not be a VXLAN (must be single-homed)
+
+# Interfaces are defined as a dictionary value for the single_homed or dual-homed key. At a minimum the following settings need to be configured:
+# single_homed: or dual-homed:
+#  - descr:                         Interface or port-channel description
+#    type:                          access, stp_trunk, stp_trunk_non_ba, non_stp_trunk, layer3 or loopback
+#    ip_vlan: vlan or ip            Depends on the type, either ip/prefix, vlan or multiple vlans separated by , and/or -
+#    switch: name                   Name of switch to create on. If dual-homed needs to be the odd switch number from MLAG pair
+
+# These settings are optional and need not be set. By default interface assignment is dynamic
+#    intf_num: integer             Specify the number, name got from fbc.adv.bse_intf.intf_fmt. Can overlap the dynamic interface range
+#    po_num: integer               Specify the number, name got from fbc.adv.bse_intf.mlag_fmt. Can overlap the dynamic interface range
+#    po_mode: string               Set the Port-channel mode, 'on', 'passive' or 'active'. Default is 'active'
+#    po_mbr_descr: list            Port-channel member interface description, [odd_switch, even_switch]. If undefined uses PO description
+#    tenant: string                Layer3 and loopbacks only. If not defined default VRF is used (global routing table)
+
+#### Base variables ####
+# If not using single-homed or dual-homed interfaces make sure the dictionary (*single_homed* or *dual_homed*) is hashed out.
+
+svc_intf:
+  intf:
+    single_homed:
+      - descr: UPLINK > DC1-BIP-LB01 - Eth1.1
+        type: access
+        ip_vlan: 30
+        switch: [DC1-N9K-LEAF01]
+        intf_num: 9
+      - descr: ACCESS > DC1-LNX-SVR01 - Eth0
+        type: access
+        ip_vlan: 10
+        switch: [DC1-N9K-LEAF02]
+      - descr: LP > Network Services
+        type: loopback
+        tenant: BLU
+        ip_vlan: 192.168.101.201/32
+        switch: [DC1-N9K-LEAF01]
+      - descr: LP > Network Services
+        type: loopback
+        tenant: BLU
+        ip_vlan: 192.168.101.202/32
+        switch: [DC1-N9K-LEAF02]
+        intf_num: 6
+      - descr: L3 > DC1-ASR-VPN01 - Gi0/0 < via dumb-switch
+        type: layer3
+        ip_vlan: 192.168.55.1/29
+        switch: [DC1-N9K-LEAF01]
+        intf_num: 12
+      - descr: L3 > DC1-ASR-VPN01 - Gi0/0 < via dumb-switch
+        type: layer3
+        ip_vlan: 192.168.55.2/29
+        switch: [DC1-N9K-LEAF02]
+
+      - descr: SVI > blu_ospf_vl510
+        type: svi
+        intf_num: 510
+        ip_vlan: 10.5.10.1/24
+        tenant: BLU
+        switch: [DC1-N9K-LEAF01]
+      - descr: SVI > blu_ospf_vl515
+        type: svi
+        intf_num: 515
+        ip_vlan: 10.5.15.1/24
+        tenant: BLU
+        switch: [DC1-N9K-LEAF01]
+      - descr: SVI > blu_ospf_vl530
+        type: svi
+        intf_num: 530
+        ip_vlan: 10.5.30.1/24
+        tenant: BLU
+        switch: [DC1-N9K-LEAF01]
+      - descr: SVI > blu_ospf_vl510
+        type: svi
+        intf_num: 510
+        ip_vlan: 10.5.10.2/24
+        tenant: BLU
+        switch: [DC1-N9K-LEAF02]
+      - descr: SVI > blu_ospf_vl515
+        type: svi
+        intf_num: 515
+        ip_vlan: 10.5.15.2/24
+        tenant: BLU
+        switch: [DC1-N9K-LEAF02]
+      - descr: SVI > blu_ospf_vl530
+        type: svi
+        intf_num: 530
+        ip_vlan: 10.5.30.2/24
+        tenant: BLU
+        switch: [DC1-N9K-LEAF02]
+
+      - descr: L3 > DC1-ASR-WAN01 - Gi0/0
+        type: layer3
+        tenant: RED
+        ip_vlan: 172.16.1.1/30
+        switch: [DC1-N9K-BORDER01]
+      - descr: L3 > DC1-ASR-WAN02 - Gi0/0
+        type: layer3
+        tenant: RED
+        ip_vlan: 172.16.1.5/30
+        switch: [DC1-N9K-BORDER02]
+      - descr: SVI > red_inet_vl99
+        type: svi
+        intf_num: 99
+        ip_vlan: 10.99.99.2/24
+        tenant: RED
+        switch: [DC1-N9K-BORDER01]
+      - descr: SVI > red_inet_vl99
+        type: svi
+        intf_num: 99
+        ip_vlan: 10.99.99.3/24
+        tenant: RED
+        switch: [DC1-N9K-BORDER02]
+      - descr: LP > Network Services
+        type: loopback
+        tenant: RED
+        ip_vlan: 192.168.99.201/32
+        switch: [DC1-N9K-BORDER01]
+
+    dual_homed:
+      - descr: UPLINK > DC1-SWI-BLU01 - Po18
+        po_mbr_descr: [UPLINK > DC1-SWI-BLU01 - Gi0/0, UPLINK > DC1-SWI-BLU01 - Gi0/1]
+        type: stp_trunk_non_ba
+        ip_vlan: 10,15,20,30,510,515,530
+        switch: [DC1-N9K-LEAF01]
+        intf_num: 18
+        po_mode: on
+      - descr: UPLINK > DC1-SWI-GRN01 - Po26
+        po_mbr_descr: [UPLINK > DC1-SWI-GRN01 - Gi0/0, UPLINK > DC1-SWI-GRN01 - Gi0/1]
+        type: stp_trunk_non_ba
+        ip_vlan: 110,111
+        switch: [DC1-N9K-LEAF01]
+
+      - descr: UPLINK > DC1-SWI-GRN02 - Po26
+        po_mbr_descr: [UPLINK > DC1-SWI-GRN02 - Gi0/0, UPLINK > DC1-SWI-GRN02 - Gi0/1]
+        type: access
+        ip_vlan: 110
+        switch: [DC1-N9K-BORDER01]
+      - descr: UPLINK > DC1-ASA-XNET01 - Po27
+        po_mbr_descr: [UPLINK > DC1-ASA-XNET01 - Gi0/0, UPLINK > DC1-ASA-XNET01 - Gi0/1]
+        type: non_stp_trunk
+        ip_vlan: 99,110,111,210,211
+        switch: [DC1-N9K-BORDER01]
+      - descr: UPLINK > DC1-SWI-AMB02 - Po28
+        po_mbr_descr: [UPLINK > DC1-SWI-AMB02 - Gi0/0, UPLINK > DC1-SWI-AMB02 - Gi0/1]
+        type: stp_trunk_non_ba
+        ip_vlan: 210,211
+        switch: [DC1-N9K-BORDER01]
+        intf_num: 28
+        po_num: 16
+
+#### Advanced variables ####
+# Reserved interface ranges that server ports can be automatically assigned from (applies to all leaf and border switches)
+
+  adv:
+    single_homed:                   # Used only for single-homed devices
+      first_intf: 11                 # First interface
+      last_intf: 25                 # Last interface
+      first_lp: 11                  # First loopback interface
+      last_lp: 20                   # Last loopback interface
+    dual_homed:                     # Used only for dual-homed devices
+        first_intf: 26              # First interface
+        last_intf: 40               # Last interface
+        first_po: 26                # First PortChannel used
+        last_po: 40                 # last PortChannel used
+
+
