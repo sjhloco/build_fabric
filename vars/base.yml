@@ -21,7 +21,7 @@ bse:
   # Details for all the services that the switches consume. All services are optional, hash out what don't need
   services:
     domain: 'stesworld.com'
-    # src_intf: Ethernet1/1                # Only need to set if not using mgmt interface and VRF
+    # src_intf: Ethernet1/12           # Only set if not using mgmt interface. Must set on 2nd playbook run after interfaces created.
     dns:
       prim: 10.10.10.41
       sec: 10.10.10.42
@@ -56,8 +56,8 @@ bse:
 
   # Advanced base configuration that is less likely to be changed
   adv:
-    image: nxos.9.3.5.bin
-    image_version: 9.3(5)          # See caveats in README, if not correct checkpoint config_replace will fail on NXOS
+    image: nxos.9.2.3.bin
+    image_version: 9.2(4)          # See caveats in README, if not correct checkpoint config_replace will fail on NXOS
     exec_timeout:
       console: 0
       vty: 15

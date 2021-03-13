@@ -3,7 +3,7 @@ cmds:
 cmds:
   - show ip ospf interface brief vrf all:
 {% for each_proc in svc_rte.ospf %}{% if each_proc.interface is defined %}
-{# Checks if local host is in the switches defined under inteface, if not then checks under process #}
+{# Checks if local host is in the switches defined under interface, if not then checks under process #}
 {% for each_intf in each_proc.interface %}{% if inventory_hostname in each_intf.switch |default(each_proc.switch) %}
 {% for each_name in each_intf.name %}
       {{ each_name | replace(fbc.adv.bse_intf.intf_fmt, fbc.adv.bse_intf.intf_short) }}:

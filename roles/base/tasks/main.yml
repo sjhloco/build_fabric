@@ -1,12 +1,11 @@
 ---
 ### Uses template to build the base configuration (mainly non-fabric) using mostly the variables from base.yml) ###
 
-# THIS IS TO BE ADDED AFTER WHEN HAVE GOT SVC INTERFACES WORKING
-# - name: "Getting tenant interface list"
-#   block:
-#   - name: "SYS >> Getting list of tenant interfaces"
-#     set_fact:
-#       flt_dflt_intf: "{{ flt_svc_intf |default(None) }}"
+- name: "Getting tenant interface list"
+  block:
+  - name: "SYS >> Getting list of tenant interfaces"
+    set_fact:
+      flt_svc_intf: "{{ svc_intf.intf |create_svc_intf_dm(inventory_hostname, svc_intf.adv, fbc.adv.bse_intf) }}"
 
 - name: "BSE >> Generating base config snippets"
   template:

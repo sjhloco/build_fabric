@@ -109,10 +109,16 @@ class FilterModule(object):
         # For each cmd serializes json (long sting) into normal dictionaries and runs pre-cmd data-model manipulation
         for cmd, output in cmd_output.items():
             tmp_dict = defaultdict(dict)
-            json_output = json.loads(output)
+            # Ansible output is in serialized json (long sting), needs making into json so can be used like a normal dictionary
+            if output != None:
+                json_output = json.loads(output)
+
+            # EMPTY: If output is empty just adds an empty dictionary
+            if output == None:
+                actual_state[cmd.replace(" | json", '')] = tmp_dict
 
             # INT_STATUS: Is a 1 deep nested dict {intf_name: {attribute: value}}}
-            if "show interface status" in cmd:
+            elif "show interface status" in cmd:
                 # Loops through interfaces in creates temp dict of each interface in format {intf_name: {attribute: value}}
                 for intf in json_output['TABLE_interface']['ROW_interface']:
                     tmp_dict[intf['interface']]['state'] = intf['state']
@@ -123,7 +129,7 @@ class FilterModule(object):
                 actual_state["show interface status"] = dict(tmp_dict)
 
             # OSPF_INT_BRIEF: Is a 1 deep nested dict {interfaces: {attribute: value}}
-            if "show ip ospf interface brief" in cmd:
+            elif "show ip ospf interface brief" in cmd:
                 # Apply NXOS 'dict to list' fix incase only one interface
                 shit_nxos(json_output, 'TABLE_ctx', 'ROW_ctx')
                 for each_proc in json_output['TABLE_ctx']['ROW_ctx']:
@@ -140,7 +146,7 @@ class FilterModule(object):
 
 
             # show ip route: Is a 1 deep nested dict {route: {attribute: value}} with multiple attributes per-route
-            if "show ip route" in cmd:
+            elif "show ip route" in cmd:
                 for each_vrf in json_output['TABLE_vrf']['ROW_vrf']:
                     # These dictionaries only exist if there are routes in the routing table (for example if L3 interface in the VRF)
                     try:

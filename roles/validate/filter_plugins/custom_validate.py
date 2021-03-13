@@ -51,7 +51,7 @@ class FilterModule(object):
             except NotImplementedError:
                 report[cmd] = {"skipped": True, "reason": "NotImplemented"}
 
-        # Results of compliance report (complies = validation result, skipped = alidation didn't run)
+        # Results of compliance report (complies = validation result, skipped = validation didn't run)
         complies = all([each_cmpl.get("complies", True) for each_cmpl in report.values()])
         skipped = [cmd for cmd, output in report.items() if output.get("skipped", False)]
 

@@ -1,6 +1,12 @@
 # Deploy Leaf and Spine
 
-This playbook will deploy a leaf and spine fabric and its related services in a declarative manner. You only have to define a few key values such as *naming convention*, *number of devices* and *addresses ranges*, the playbook will do the rest. It is structured into the following 5 roles giving you the option to deploy part or all of the fabric using playbook tags.
+This playbook will deploy a leaf and spine fabric and its related services in a declarative manner. You only have to define a few key values such as *naming convention*, *number of devices* and *addresses ranges*, the playbook will do the rest.
+
+This all came about from my project for the IPSpace automation course and was used in part for the initial setup N9K DC setup. This is designed to be run on the N9Kv, to run it declaratively on physical devices you will need a few minor tweaks to *bse_tmpl.j2* file as different hardware can have slightly different base commands.
+
+I am done with building DCs and with my programing knowledge is probably the limit I can take this so dont envisage any future chanegs to this. This README just gives the important information, is more examples in the variable files and I tried to explain it in more detail in my [blog](https://theworldsgonemad.net/2021/automate-dc-pt1)
+
+It playbook (*PB_build_fabric.yml*) deployment is structured into the following 5 roles giving you the option to deploy part or all of the fabric using playbook tags.
 
 - base: Non-fabric specific core configuration such as hostname, address ranges, users, acls, ntp, etc
 - fabric: Fabric specific elements such as fabric size, interfaces (spine-to->leaf/border), OSPF, BGP and MLAG
@@ -49,19 +55,19 @@ The settings required to onboard and manage device such as hostname format, IP a
 
 | Key      | Value   | Information  |
 |----------|---------|--------------|
-| spine    | `xx-xx` | *Spine switch naming format. For example with DC1-N9K-SPINE device is DC1-N9K-SPINE01 and group is spine*
-| border   | `xx-xx` | *Border switch naming format. For example with DC1-N9K-BORDER device is DC1-N9K-BORDER01 and group is border*
-| leaf     | `xx-xx` | *Leaf switch naming format. For example with DC1-N9K-LEAF device is DC1-N9K-LEAF01 and group is leaf*
+| `spine`    | xx-xx | *Spine switch naming format. For example with DC1-N9K-SPINE device is DC1-N9K-SPINE01 and group is spine*
+| `border`   | xx-xx | *Border switch naming format. For example with DC1-N9K-BORDER device is DC1-N9K-BORDER01 and group is border*
+| `leaf`     | xx-xx | *Leaf switch naming format. For example with DC1-N9K-LEAF device is DC1-N9K-LEAF01 and group is leaf*
 
 - ***addr:*** Subnets from which the device specific IP addresses are generated based on the *device type increment* and the *node number*. The majority of subnets need to be at least /27 to cover a maximum network size of 4 spines, 10 leafs and 4 borders (18 addresses)
 
 | Key      | Value | Min size     | Information   |
 |----------|-------|--------------|---------------|
-| lp_net           | `x.x.x.x/26` | /26 | *Address range routing (OSPF/BGP), VTEP and vPC addresses are from, mask will be /32* |
-| mgmt_net         | `x.x.x.x/27` | /27 | *Management network, by default will use .11 to .30* |
-| mlag_peer_net    | `x.x.x.x/26` | /26 or /27 | *Split into a per-switch pair /30 for OSPF over peer link. /26 if using same range for keepalive* |
-| mlag_kalive_net  | `x.x.x.x/27` | /27 | *Optional keepalive address range. If not set uses the mlag_peer_net range* |
-| mgmt_gw          | `x.x.x.x`    | n/a | *Management interface default gateway*
+| `lp_net`           | x.x.x.x/26 | /26 | *Address range routing (OSPF/BGP), VTEP and vPC addresses are from, mask will be /32* |
+| `mgmt_net`         | x.x.x.x/27 | /27 | *Management network, by default will use .11 to .30* |
+| `mlag_peer_net`    | x.x.x.x/26 | /26 or /27 | *Split into a per-switch pair /30 for OSPF over peer link. /26 if using same range for keepalive* |
+| `mlag_kalive_net`  | x.x.x.x/27 | /27 | *Optional keepalive address range. If not set uses the mlag_peer_net range* |
+| `mgmt_gw`          | x.x.x.x    | n/a | *Management interface default gateway*
 
 `mlag_kalive_net` is only needed if not using the management interface for the keepalive or you want separate ranges for the peer-link and keepalive interfaces. The keepalive link is created in its own VRF so it can use duplicate IPs or be kept unique by offsetting it with the fabric variable `fbc.adv.addr_incre.mlag_kalive_incre`.
 
@@ -75,49 +81,49 @@ Variables used to determine how the fabric will be built, the network size, inte
 
 | Key         | Value | Information  |
 |-------------|-------|--------------|
-| num_spines  | `2`   | *Number of spine switches in increments of 1 up to a maximum of 4* |
-| num_borders | `2`   | *Number of border switches in increments of 2 up to a maximum of 4* |
-| num_leafs   | `4`   | *Number of leaf switches in increments of 2 up to a maximum of 10* |
+| `num_spines`  | 2   | *Number of spine switches in increments of 1 up to a maximum of 4* |
+| `num_borders` | 2   | *Number of border switches in increments of 2 up to a maximum of 4* |
+| `num_leafs`   | 4   | *Number of leaf switches in increments of 2 up to a maximum of 10* |
 
 ***num_intf:*** The total number of interfaces per device type is required to make interface assignment declarative by ensuring that non-defined interfaces are reset to their default settings
 
 | Key    | Value  | Information |
 |--------|--------|-------------|
-| spine  | `1,64` | *The first and last interface for a spine switch*
-| border | `1,64` | *The first and last interface for a border switch*
-| leaf   | `1,64` | *The first and last interface for a leaf switch*
+| `spine`  | 1,64 | *The first and last interface for a spine switch*
+| `border` | 1,64 | *The first and last interface for a border switch*
+| `leaf`   | 1,64 | *The first and last interface for a leaf switch*
 
 ***adv.bse_intf:*** Interface naming formats and seed interface numbers used to build the fabric
 
-| Key         | Value          | Information   |
+|| Key         | Value          | Information   |
 |-------------|----------------|---------------|
-| intf_fmt    | `Ethernet1/`   | *Interface naming format*
-| intf_short  | `Eth1/`        | *Short interface name used in interface descriptions*
-| mlag_fmt    | `port-channel` | *MLAG interface naming format*
-| mlag_short  | `Po`           | *Short MLAG interface name used in MLAG interface descriptions*
-| lp_fmt      | `loopback`     | *Loopback interface naming format*
-| sp_to_lf    | `1`            | *First interface used for SPINE to LEAF links (1 to 10)*
-| sp_to_bdr   | `11`           | *First interface used for SPINE to BORDER links (11 to 14)*
-| lf_to_sp    | `1`            | *First interface used LEAF to SPINE links (1 to 4)*
-| bdr_to_sp   | `1`            | *First interface used BORDER to SPINE links (1 to 4)*
-| mlag_peer   | `5-6`          | *Interfaces used for the MLAG peer Link*
-| mlag_kalive | `mgmt`         | *Interface for the keepalive. If it is not an integer uses the management interface*
+| `intf_fmt`    | Ethernet1/   | *Interface naming format*
+| `intf_short`  | Eth1/        | *Short interface name used in interface descriptions*
+| `mlag_fmt`    | port-channel | *MLAG interface naming format*
+| `mlag_short`  | Po           | *Short MLAG interface name used in MLAG interface descriptions*
+| `lp_fmt`      | loopback     | *Loopback interface naming format*
+| `sp_to_lf`    | 1            | *First interface used for SPINE to LEAF links (1 to 10)*
+| `sp_to_bdr`   | 11           | *First interface used for SPINE to BORDER links (11 to 14)*
+| `lf_to_sp`    | 1            | *First interface used LEAF to SPINE links (1 to 4)*
+| `bdr_to_sp`   | 1            | *First interface used BORDER to SPINE links (1 to 4)*
+| `mlag_peer`   | 5-6          | *Interfaces used for the MLAG peer Link*
+| `mlag_kalive` | mgmt         | *Interface for the keepalive. If it is not an integer uses the management interface*
 
 ***adv.address_incre:*** Increments added to the node ID and subnet to generate unique device IP addresses. Uniqueness is enforced by using different increments for different device roles and functions.
 
 | Key               | Value | Information   |
 |-------------------|-------|---------------|
-| spine_ip          | `11`  | *Spine mgmt and routing loopback addresses (default .11 to .14)*
-| border_ip         | `16`  | *Border mgmt and routing loopback addresses (default .16 to .19)*
-| leaf_ip           | `21`  | *Leaf mgmt and routing loopback addresses (default .21 to .30)*
-| border_vtep_lp    | `36`  | *Border VTEP (PIP) loopback addresses (default .36 to .39)*
-| leaf_vtep_lp      | `41`  | *Leaf VTEP (PIP) loopback addresses (default .41 to .50)*
-| border_mlag_lp    | `56`  | *Shared MLAG anycast (VIP) loopback addresses for each pair of borders (default .56 to .57)*
-| leaf_mlag_lp      | `51`  | *Shared MLAG anycast (VIP) loopback addresses for each pair of leafs (default .51 to .55)*
-| border_bgw_lp     | `58`  | *Shared BGW MS anycast loopback addresses for each pair of borders (default .58 to .59)*
-| mlag_leaf_ip      | `1`   | *Start IP for leaf OSPF peering over peer-link (default LEAF01 is .1, LEAF02 is .2, LEAF03 is .5, etc)*
-| mlag_border_ip    | `21`  | *Start IP for border OSPF peering over peer-link (default BORDER01 is .21, BORDER03 is .25, etc)*
-| mlag_kalive_incre | `28`  | *Increment added to leaf/border increment (mlag_leaf_ip/mlag_border_ip) for keepalive addresses*
+| `spine_ip`          | 11  | *Spine mgmt and routing loopback addresses (default .11 to .14)*
+| `border_ip`         | 16  | *Border mgmt and routing loopback addresses (default .16 to .19)*
+| `leaf_ip`           | 21  | *Leaf mgmt and routing loopback addresses (default .21 to .30)*
+| `border_vtep_lp`    | 36  | *Border VTEP (PIP) loopback addresses (default .36 to .39)*
+| `leaf_vtep_lp`      | 41  | *Leaf VTEP (PIP) loopback addresses (default .41 to .50)*
+| `border_mlag_lp`    | 56  | *Shared MLAG anycast (VIP) loopback addresses for each pair of borders (default .56 to .57)*
+| `leaf_mlag_lp`      | 51  | *Shared MLAG anycast (VIP) loopback addresses for each pair of leafs (default .51 to .55)*
+| `border_bgw_lp`     | 58  | *Shared BGW MS anycast loopback addresses for each pair of borders (default .58 to .59)*
+| `mlag_leaf_ip`      | 1   | *Start IP for leaf OSPF peering over peer-link (default LEAF01 is .1, LEAF02 is .2, LEAF03 is .5, etc)*
+| `mlag_border_ip`    | 21  | *Start IP for border OSPF peering over peer-link (default BORDER01 is .21, BORDER03 is .25, etc)*
+| `mlag_kalive_incre` | 28  | *Increment added to leaf/border increment (mlag_leaf_ip/mlag_border_ip) for keepalive addresses*
 
 If the management interface is not being used for the keepalive link either specify a separate network range (`bse.addr.mlag_kalive_net`) or use the peer-link range and specify an increment (`mlag_kalive_incre`) that is added to the peer-link increment (`mlag_leaf_ip` or `mlag_border_ip`) to generate unique addresses.
 
@@ -125,10 +131,10 @@ If the management interface is not being used for the keepalive link either spec
 
 | Key            | Value                 | Mandatory | Information |
 |----------------|-----------------------|-----------|-------------|
-| ospf.pro       | `string` or `integer` | Yes | *Can be numbered or named*
-| ospf.area      |  x.x.x.x              | Yes | *Area this group of interfaces are in, must be in dotted decimal format*
-| bgp.as_num     | `integer`             | Yes | *Local BGP Autonomous System number*
-| authentication | `string`              | No  | *Applies to BGP and OSPF. Hash out if don't want to set authentication*
+| `ospf.pro`       | string or integer | Yes | *Can be numbered or named*
+| `ospf.area`      |  x.x.x.x              | Yes | *Area this group of interfaces are in, must be in dotted decimal format*
+| `bgp.as_num`     | integer             | Yes | *Local BGP Autonomous System number*
+| `authentication` | string              | No  | *Applies to BGP and OSPF. Hash out if don't want to set authentication*
 
 ***acast_gw_mac***: The distributed gateway anycast MAC address for all leaf and border switches in the format `xxxx.xxxx.xxxx`
 
@@ -222,64 +228,64 @@ To use the inventory plugin in a playbook reference the inventory config file in
 ansible-playbook PB_build_fabric.yml -i inv_from_vars_cfg.yml
 ```
 
-## Services - Tenant Variables *(svc_tnt)*
+## Services - Tenant (svc_tnt)
 
 Tenants, SVIs, VLANs and VXLANs are created based on the variables stored in the *service_tenant.yml* file (*svc_tnt.tnt*).
 
 ***tnt:*** A list of tenants that contains a list of VLANs (L2 or L3)
 
 - Tenants (VRFs) will only be created on a leaf or border if a VLAN within that tenant is to be created on that device
-- Even if a tenant is not a L3 tenant a VRF will still be created and the L3VNI/VLAN number reserved
+- Even if a tenant is not a L3 tenant a VRF will still be created and the L3VNI and tenant VLAN number reserved
 - If the tenant is a L3 tenant the route-map for redistribution is always created and attached to the BGP peer
 
 | Key      | Value | Mandatory | Information |
 |----------|-------|-----------|-------------|
- tenant_name | `string` | Yes |  *Name of the VRF* |
-| l3_tenant | `True` or `False` | Yes |  *Does it need SVIs or is routing done off the fabric (i.e external router)* |
-| bgp_redist_tag | `integer` | No | *Tag used to redistributed SVIs into BGP. By default uses tenant SVI number* |
-| vlans |  `list` | Yes | *List of VLANs within this tenant (see the below table)* |
+| `tenant_name` | string | Yes |  *Name of the VRF* |
+| `l3_tenant` | True or False | Yes |  *Does it need SVIs or is routing done off the fabric (i.e external router)* |
+| `bgp_redist_tag` | integer | No | *Tag used to redistributed SVIs into BGP. By default uses tenant SVI number* |
+| `vlans` |  list | Yes | *List of VLANs within this tenant (see the below table)* |
 
 ***vlans:*** A List of VLANs within a tenant which at a minimum need the L2 values of *name* and *num*. VLANs and SVIs can only be created on all leafs and/ or all borders, can't selectively say which individual leaf or border switches to create them on
 
 - Unless an IP address is assigned to a VLAN (*ip_addr*) it will only be L2 VLAN
 - L3 VLANs are automatically redistributed into BGP. This can be disabled (*ipv4_bgp_redist: False*) on a per-vlan basis
 - By default VLANs will only be created on the leaf switches (*create_on_leaf*). This can be changed on a per-vlan basis to create only on borders (*create_on_border*) or on both leafs and borders
-- To add a non-anycast SVI create the VLAN as normal but with the extra `VXLAN: False` dict. The SVI is defined under service_interface.yml as `type: svi`
-- Optional settings will implicitly use the default value. They only need defining if not using the default value
+- To add a non-VXLAN SVI (without anycast address) create the VLAN as normal but with the extra `VXLAN: False` dictionary. The SVI is defined under *service_interface.yml* as `type: svi`
+- Optional settings will implicitly use the default value, they only need defining if not using the default value
 
 | Key      | Value | Mandatory | Information |
 |----------|-------|-----------|-------------|
-| num | `integer` | Yes | *The VLAN number*
-| name | `string` | Yes | *The VLAN name*
-| ip_addr | x.x.x.x/x | No |  *Adding an IP address automatically makes the VLAN L3 (not set by default)*
-| ipv4_bgp_redist |  `True` or `False` | No | *Dictates whether the SVI is redistributed into VRF BGP addr family (default True)*
-| create_on_leaf | `True` or `False` | No | *Dictates whether this VLAN is created on the leafs (default True)*
-| create_on_border | `True` or `False` | No | *Dictates whether this VLAN is created on the borders (default False)*
-| vxlan | `True` or `False` | No | *Dictates whether is VXLAN or normal VLAN. Only need if explicitly done want to be VXLAN (default True)*
+| `num` | integer | Yes | *The VLAN number*
+| `name` | string | Yes | *The VLAN name*
+| `ip_addr` | x.x.x.x/x | No |  *Adding an IP address automatically making the VLAN L3 (not set by default)*
+| `ipv4_bgp_redist` | True or False | No | *Dictates whether the SVI is redistributed into VRF BGP addr family (default True)*
+| `create_on_leaf` | True or False | No | *Dictates whether this VLAN is created on the leafs (default True)*
+| `create_on_border` | True or False | No | *Dictates whether this VLAN is created on the borders (default False)*
+| `vxlan` | True or False | No | *Whether VXLAN or normal VLAN. Only need if don't want it to be VXLAN (default True)*
 
-The redistribution route-map name can be changed in the advanced (*adv*) section of *services-tenant.yml* or *services-routing.yml*. If defined in both places the setting in *services-routing.yml* takes precedence.
+The redistribution route-map name can be changed in the advanced (*adv*) section of *services-tenant.yml* or *services-routing.yml*. If defined in both places the setting in *services-routing.yml* take precedence.
 
 ### L2VNI and L3VNI numbers
 
-The L2VNI and L3VNI values are automatically derived and incremented on a per-tenant basis based on the start and increment values defined in the advanced section (*svc_tnt.adv*) of *services_tenant.yml*.
+The L2VNI and L3VNI values are automatically derived and incremented on a per-tenant basis based on the *start* and *increment* seed values defined in the advanced section (*svc_tnt.adv*) of *services_tenant.yml*.
 
 ***adv.bse_vni:*** Starting VNI numbers
 
 | Key      | Value | Information |
 |----------|-------|-------------|
-| tnt_vlan | 3001 | *Starting VLAN number for the transit L3VNI*
-| l3vni | 10003001 | *Starting VNI number for the transit L3VNI*
-| l2vni | 10000 | *Starting L2VNI number, the VLAN number will be added to this*
+| `tnt_vlan` | 3001 | *Starting VLAN number for the transit L3VNI*
+| `l3vni` | 10003001 | *Starting L3VNI number*
+| `l2vni` | 10000 | *Starting L2VNI number, the VLAN number will be added to this*
 
 ***adv.vni_incre:*** Number by which VNIs are incremented for each tenant
 
 | Key      | Value | Information |
 |----------|-------|-------------|
-| tnt_vlan | 1 | *Value by which the transit L3VNI VLAN number is increased for each tenant*
-| l3vni | 1 | *Value by which the transit L3VNI VNI number is increased for each tenant*
-| l2vni | 10000 | *Value by which the L2VNI range (range + vlan) is increased for each tenant*
+| `tnt_vlan` | 1 | *Value by which the transit L3VNI VLAN number is increased for each tenant*
+| `l3vni` | 1 | *Value by which the transit L3VNI VNI number is increased for each tenant*
+| `l2vni` | 10000 | *Value by which the L2VNI range (range + vlan) is increased for each tenant*
 
-An example of a data model created by the *svc_tnt_dm* method within the *format_dm.py* custom filter plugin. These are created on a device_role basis, so for all leaf switches and for all border switches.
+For example a two tenant fabric each with a VLAN 20 using the above values would have L3 tenant SVIs of *3001, 3002*, L3VNIs or *10003001, 10003002* and L2VNIs of *10020* and *20020*.
 
 A new data-model is created from the *services_tenant.yml* variables by passing these through the *format_dm.py* filter_plugin method ***create_svc_tnt_dm*** along with the BGP route-map name (if exists) and ASN (from fabric.yml). The result is a per-device role (leaf and border) list of tenants, SVIs and VLANs which are used to render the ***svc_tnt_tmpl.j2*** template and create the config snippet.
 
@@ -315,58 +321,61 @@ Below is an example of the data model format for a tenant and its VLANs.
 }
 ```
 
-## Services - Interface Variables *(svc_intf)*
+## Services - Interface (svc_intf)
 
-The *service_interface.yml* variables can define a single or dual-homed interface (including port-channel number) either statically or dynamically from a range.
+The *service_interface.yml* variables define single or dual-homed interfaces (including port-channel) either statically or dynamically from a range.
 
 - By default all interfaces are dual-homed LACP *'active'*. The VPC number can not be changed, is always the port-channel number
-- Interfaces and port-channels can be assigned from a pool defined under advanced or specified manually
-- If the tenant (VRF) is not defined for a layer3 or loopback interface it will be created in the global routing table
-- If the interface config is the same across multi switches (like an access port) define one interface with a list of switches
-- *dual-homed* interfaces only need the odd numbered switch specified, the config for both members for the MLAG pair is automatically generated
+- Interfaces and port-channels can be assigned from a pre-defined pool (under *svc_intf.adv*) or specified manually
+- If the tenant (VRF) is not defined for a layer3, SVI or loopback interface it will be created in the global routing table
+- If the interface config is the same across multiple switches (like an access port) define one interface with a list of switches
+- For *dual-homed* interfaces only specify the odd numbered switch, the config for both members of the MLAG pair is automatically generated
 
-There are 6 pre-defined types of interface that can be deployed:
+There are 7 pre-defined interface types that can be deployed:
 
 - **access:** *A single VLAN layer2 access port. STP is set to 'edge'*
 - **stp_trunk:** *A trunk going to a device that supports Bridge Assurance. STP is set to 'network'*
-- **stp_trunk_non_ba:** *Same as stp_trunk except that STP is set to 'normal' to support devices that don't use BA*
+- **stp_trunk_non_ba:** *Same as stp_trunk except that STP is set to 'normal' as it is for devices that don't support BA*
 - **non_stp_trunk:** *A trunk port going to a device that doesn't support BPDU. STP set to 'edge' and BPDU Guard enabled*
 - **layer3:** *A layer3 interface with an IP address. Must be single-homed as MLAG not supported for L3 interfaces*
 - **loopback:** *A loopback interface with an IP address (must be single-homed)*
 - **svi:** *To define a SVI the VLAN must exist under service_tenant and not be a VXLAN (must be single-homed)*
 
-***intf.single_homed*** *or* ***intf.dual-homed:*** Separate dictionaries that hold lists of all interfaces of that type. If not defining either single or dual-homed omit that dictionary
+The ***intf.single_homed*** and ***intf.dual-homed*** dictionaries both hold a list of all single-homed or dual-homed interfaces using any of the attributes in the table below. If there are no single-homed or dual-homed interfaces on the fabric hash out the relevant dictionary.
+
 | Key        | Value   | Mandatory   | Information |
 |------------|---------|-------------|-------------|
-| descr | `string` | Yes | *Interface or port-channel description*
-| type | intf_type | Yes | *Either access, stp_trunk, stp_trunk_non_ba, non_stp_trunk, layer3, loopback or svi*
-| ip_vlan | vlan or ip | Yes | *Depends on the type, either ip/prefix, vlan or multiple vlans separated by , and/or -*
-| switch  | `list` | Yes | *Switches created on. If dual-homed needs to be the odd switch number from MLAG pair*
-| tenant | `string` | No | *Layer3 and loopbacks only. If not defined the default VRF is used (global routing table)*
-| po_mbr_descr | `list` | No | *PO member interface description, [odd_switch, even_switch]. If undefined uses PO descr*
-| po_mode | `string` | No | *Set the Port-channel mode, 'on', 'passive' or 'active'. Default is 'active'*
-| intf_num | `integrar` | No | *Only specify the number, the name and module are got from the fbc.adv.bse_intf.intf_fmt*
-| po_num | `integrar` | No | *Only specify the number, the name is got from the fbc.adv.bse_intf.mlag_fmt*
+| `descr` | string | Yes | *Interface or port-channel description*
+| `type` | intf_type | Yes | *Either access, stp_trunk, stp_trunk_non_ba, non_stp_trunk, layer3, loopback or svi*
+| `ip_vlan` | vlan or ip | Yes | *Depends on the type, either ip/prefix, vlan or multiple vlans separated by , and/or -*
+| `switch`  | list | Yes | *Switches created on. If dual-homed needs to be the odd switch number from MLAG pair*
+| `tenant` | string | No | *Layer3, svi and loopbacks only. If not defined the default VRF is used (global routing table)*
+| `po_mbr_descr` | list | No | *PO member interface description, [odd_switch, even_switch]. If undefined uses PO descr*
+| `po_mode` | string | No | *Set the Port-channel mode, 'on', 'passive' or 'active' (default is 'active')*
+| `intf_num` | integer | No | *Only specify the number, the name and module are got from the fbc.adv.bse_intf.intf_fmt*
+| `po_num` | integer | No | *Only specify the number, the name is got from the fbc.adv.bse_intf.mlag_fmt*
 
-The playbook has the logic to recognize if statically defined interface numbers overlap with the dynamic interface range and exclude them from dynamic interface assignment. For simplicity it is best to use separate ranges for the dynamic and static assignments.
+The playbook has the logic to recognize if statically defined interface numbers overlap with the dynamic interface range and exclude them from dynamic interface assignment. For simplicity it is probably best to use separate ranges for the dynamic and static assignments.
 
 ***adv.single_homed:*** Reserved range of interfaces to be used for dynamic single-homed and loopback assignment
+
 | Key        | Value      | Information |
 |------------|------------|-------------|
-| first_intf | `integrar` | *First single-homed interface to be dynamically assigned*
-| last_intf  | `integrar` | *Last single-homed interface to be dynamically assigned*
-| first_lp   | `integrar` | *First loopback number to be dynamically used*
-| last_lp    | `integrar` | *Last loopback number to be dynamically used*
+| `first_intf` | integer | *First single-homed interface to be dynamically assigned*
+| `last_intf`  | integer | *Last single-homed interface to be dynamically assigned*
+| `first_lp`   | integer | *First loopback number to be dynamically used*
+| `last_lp`    | integer | *Last loopback number to be dynamically used*
 
 ***adv.dual-homed:*** Reserved range of interfaces to be used for dynamic dual-homed and port-channel assignment
+
 | Key        | Value      | Information  |
 |------------|------------|--------------|
-| first_intf | `integrar` | *First dual-homed interface to be dynamically assigned*
-| last_intf  | `integrar` | *Last dual-homed interface to be dynamically assigned*
-| first_po   | `integrar` | *First port-channel number to be dynamically used*
-| last_po    | `integrar` | *Last port-channel number to be dynamically used*
+| `first_intf` | integer | *First dual-homed interface to be dynamically assigned*
+| `last_intf`  | integer | *Last dual-homed interface to be dynamically assigned*
+| `first_po`   | integer | *First port-channel number to be dynamically used*
+| `last_po`    | integer | *Last port-channel number to be dynamically used*
 
-The filter_plugin method ***create_svc_intf_dm*** is run for each inventory device to produce a list of all interfaces to be created on that device. In addition to the *services_interface.yml* variables it also passes in the interface naming format (*fbc.adv.bse_intf*) to create the full interface name and *hostname* to find the interfaces relevant to that device.
+The filter_plugin method ***create_svc_intf_dm*** is run for each inventory device to produce a list of all interfaces to be created on that device. In addition to the *services_interface.yml* variables it also passes in the interface naming format (*fbc.adv.bse_intf*) to create the full interface name and *hostname* to find the interfaces relevant to that device. This is saved to the fact *flt_svc_intf* which is used to render the ***svc_intf_tmpl.j2*** template and create the config snippet.
 
 Below is an example of the data model format for a single-homed and dual-homed interface.
 
@@ -399,218 +408,215 @@ Below is an example of the data model format for a single-homed and dual-homed i
 }
 ```
 
-In the same manner as tenants *flt_svc_intf* is used to render the template and produce the configuration snippet. The template is quite simple as the same format to create interfaces for all devices.
-
 ## Interface Cleanup - Defaulting Interfaces
 
 The interface cleanup role is required to make sure any interfaces not assigned by the fabric or the services (svc_intf) role have a default configuration. Without this if an interface was to be changed (for example a server moved to different interface) the old interface would not have its configuration put back to the default values.
 
 This role goes through the interfaces assigned by the fabric (from the inventory) and service_interface role (from the *svc_intf_dm* method) producing a list of used physical interfaces which are then subtracted from the list of all the switches physical interfaces (*fbc.num_intf*). It has to be run after the fabric or service_interface role as it needs to know what interfaces have been assigned, therefore uses tags to ensure it is run anytime either of these roles are run.
 
-## Services - Routing Variables *(svc_rte)*
+## Services - Route (svc_rte)
 
-BGP peerings, non-backbone OSPF processes, static routes and redistribution (connected, static, bgp, ospf) are configured based on the variables specified in the service_route.yml file. I am undecided about this role as it is difficult to keep it simple due to all the nerd knobs in routing protocols, especially BGP.
+BGP peerings, non-backbone OSPF processes, static routes and redistribution (connected, static, bgp, ospf) are configured based on the variables specified in the *service_route.yml* file. The naming convention of the route-maps and prefix-lists used by OSPF and BGP can be changed under advanced section (*adv*) of the variable file.
 
-Under the advanced section (*adv*) of the variable file the naming policy of the route-maps and prefix-lists used by OSPF and BGP can be changed.
-From the values in the *services_routing.yml* file a new per-device data model is created by *svc_rte_dm* method in the *format_dm.py* custom filter plugin.
+I am undecided about this role as it goes against the simplistic principles used by other roles. By its very nature routing is very configurable which leads to complexity due to the number of options and inheritance. In theory it should all work but due to the number of options available I have not tested all of the possible variations of configuration.
 
-### Static routes
+### Static routes (svc_rte.static_route)
 
 Routes are added per-tenant with the tenant being the top-level dictionary that routes are created under.
 
-- *tenant*, *switch* and *prefix* are lists to make it easy to apply the same routes across multiple devices and tenants.
-- For routes with the same attributes (for example same next-hop gateway) only need the one list with all the routes in that list of the prefix dictionary.
-- Optionally set the interface, administrative distance of the route and whether the next hop is in a different VRF (for route leaking)
+- *tenant*, *switch* and *prefix* are lists to make it easy to apply the same routes across multiple devices and tenants
+- For routes with the same attributes (like next-hop) can group all the routes as a list within the one `prefix` dictionary
+- Can optionally set next-hop interface, administrative distance and the next hop VRF (for route leaking between VRFs)
 
-| parent dict  | Key           | Value      | Mand | Information |
+| Parent dict  | Key           | Value      | Mandatory | Information |
 |--------------|---------------|------------|------|-------------|
-| static_route | tenant       | `list`     | Yes | *List of tenants to create the routes in. Use 'global' if to go in the global routing table*
-| static_route | switch       | `list`     | Yes | *List of switches to create all routes on (alternatively can be set per-route)*
-| route        | prefix       | `list`     | Yes | *List of routes that all have same settings (gateway, interface, switch, etc)*
-| route        | gateway      | x.x.x.x    | Yes | *Next hop gateway address*
-| route        | interface    | `string`   | No  | *Next hop interface, use interface full name (Ethernet) or Vlan*
-| route        | ad           | `integrar` | No  | *Set the Administrative Distance for this group of routes (1 - 255)*
-| route        | next_hop_vrf | `string`   | No  | *Set the VRF for next-hop if it is in a different VRF (for route leaking)*
-| route        | switch       | `list`     | Yes | *List of switches this group of routes are to be created on (overrides static_route)*
+| n/a | `tenant`       | list     | Yes | *List of tenants to create the routes in. Use 'global' for the global routing table*
+| n/a | `switch`       | list     | Yes | *List of switches to create all routes on (alternatively can be set per-route)*
+| route        | `prefix`       | list     | Yes | *List of routes that all have same settings (gateway, interface, switch, etc)*
+| route        | `gateway`      | x.x.x.x    | Yes | *Next hop gateway address*
+| route        | `interface`    | string   | No  | *Next hop interface, use interface full name (Ethernet), Vlan or Null0*
+| route        | `ad`           | integer | No  | *Set the administrative distance for this group of routes (1 - 255)*
+| route        | `next_hop_vrf` | string   | No  | *Set the VRF for next-hop if it is in a different VRF (route leaking between VRFs)*
+| route        | `switch`       | list     | Yes | *Switches to create this group of routes on (overrides static_route)*
 
+Routes are added per-tenant with the tenant being the top-level dictionary that routes are created under.
 
+### OSPF (svc_rte.ospf)
 
+An OSPF processes can be configured for any of the tenants or the global routing table. Each OSPF process is enabled on a per-interface basis with summarization and redistribution defined on a per-switch basis. The mandatory `process.switch` list defines the switches the OSPF process is enabled on. Non-mandatory settings only need to be defined if changing the default behavior, otherwise is no need to add the dictionary
 
+| Key      | Value            | Mandatory | Information |
+|----------|-----------------|-----------|-------------|
+| `process` | integer or string | Yes | *The process can be a number or word*
+| `switch` | list | Yes | *List of switches to create the OSPF process on*
+| `tenant` | string | No | *The VRF OSPF is enabled in. If not defined uses the global routing table*
+| `rid` | list | No | *List of RIDs, must match number of switches (if undefined uses highest loopback IP)*
+| `bfd` | True | No | *Enable BFD globally for all interfaces (disabled by default)*
+| `default_orig` | True, always | No | *Advertise a default route(disabled by default). Enable conditionally (True) or always*
 
+*Interface*, *summary* and *redistribution* are child dictionaries of lists under the *ospf* parent dictionary. They inherit `process.switch` unless `switch` is specifically defined under that child dictionary.
+
+***ospf.interface:***  Each list element is a group of interfaces with the same set of attributes (area number, interface type, auth, etc)
+
+| Key      | Value | Mandatory | Information |
+|----------|-------|-----------|-------------|
+| `name` | list | Yes | *List of one or more interfaces. Use interface full name (Ethernet) or Vlan*
+| `area` | x.x.x.x | Yes | *Area this group of interfaces are in, must be in dotted decimal format*
+| `switch` | list | No | *On which switches to enable OSPF on these interfaces (inherits process.switch if not set)*
+| `cost` | integer | No | *Statically set the interfaces OSPF cost, can be 1-65535*
+| `authentication` | string | No | *Enable authentication for the area and a password (Cisco type 7) for this interface*
+| `area_type` | string | No | *By default is normal. Can be set to stub, nssa, stub/nssa no-summary, nssa default-information-originate or nssa no-redistribution*
+| `passive` | True | No | *Make the interface passive. By default all configured interfaces are non-passive*
+| `hello` | integer | No | *Hello used for OSPF peering (deadtime is x4). Overrides BFD (if enabled) for this interface*
+| `type` | point-to-point | No | *By default all interfaces are broadcast, can be changed to point-to-point*
+
+***ospf.summary:*** All summaries with the same attributes (*switch*, *filter*, *area*) can be grouped within the one `prefix` list
+
+| Key      | Value | Mandatory | Information |
+|----------|-------|-----------|-------------|
+| `prefix` | list | Yes | *List of summaries to apply on all the specified switches*
+| `switch` | list | No | *What switches to summarize on, inherits process.switch if not set*
+| `area` | x.x.x.x | No | *By default it is LSA5. For LSA3 add an area to summarize from that area*
+| `filter` | not-advertise | No | *Stops advertisement of the summary and subordinate subnets (is basically filtering)*
+
+***ospf.redist:***: Each list element is the redistribution type, can be ospf_xx, bgp_xx, static or connected. Redistributed prefixes can be filtered (allow) or weighted (metric) with the route-map order being metric and then allow. If the allow list is not set it will allow any (empty route-map).
+
+| Key      | Value | Mandatory | Information |
+|----------|-------|-----------|-------------|
+| `type` | string | Yes | *Redistribute either OSPF process, BGP AS (whitespace before process or AS), static or connected*
+| `switch` | list | No | *What switches to redistribute on, inherits process.switch if not set*
+| `metric` | dict | No | *Add metric to redistributed prefixes. Keys are metric value and values a list of prefixes or keyword ('any' or 'default'). Can't use metric with connected*
+| `allow` | list,any,default | No | *List of prefixes (connected is list of interfaces) or keyword ('any' or 'default') to redistribute*
 
 ### BGP
 
-Uses the concept of groups and peers with inheritance. The majority of settings can either be configured under group or the peer, with those configured under the peer taking precedence.
-The *switch* and *tenant* settings must be a list (even if is a single device) to allow for the same group and peers to be created on multiple devices and tenants.
-At a bare minimun only the mandatory settings are required to form BGP peerings, all others settings are optional.
-To put anything in the global routing table use the tenant name *'global'*
+Uses the concept of *groups* and *peers* with the majority of the settings configured in either. Peer settings take precedence over group.
 
-***bgp.group:*** List of groups that hold global settings for all peers within that group. This table shows settings that can ONLY be configured under the group. A group does not need to have a switch defined, it will be automatically created on any switches that peers within it are created on.
-| Key      | Value | Mandatory | Information |
-|----------|-------|-----------|-------------|
-| name | `string` | Yes | *Name of the group. No whitespaces and duplicate group or peer names allowed. Used in group, route-map and prefix-list names*
+- `group` holds the global settings for all peers within it. Are automatically created on any switches that peers within it are created
+- `peer` is a list of peers within the group. If the setting is configured in the group and peer the peer setting will take precedence
+- The `group.name` and `peer.name` is used in the construction of route-map and prefix-list names along with the formatting in Advanced settings
+- If the tenant is not specified (dictionary not defined) the group or peer will be added to the default global routing table
+- Non-mandatory settings only need to be defined if changing the default behavior, otherwise is no need to add the dictionary
 
-***grp.group.peer:*** List of peers within the group that will inherit non-configured settings from that group. This table shows settings that can ONLY be configured under the peer.
-| Key      | Value | Mandatory | Information |
-|----------|-------|-----------|-------------|
-| name | `string` |  Yes | *Name of the peer. No whitespaces and duplicate group or peer names allowed. Used in route-map and prefix-list names*
-| peer_ip | x.x.x.x |  Yes | *IP address of the peer*
-| description| `string` |  Yes | *Description of the peer*
+| Set in  | Key      | Value     | Mandatory | Information |
+|-------|----------|------------|-----------|-------------|
+| group | `name` | string | Yes | *Name of the group, no whitespaces or duplicate names (group or peer)*
+| peer | `name` | string |  Yes | *Name of the peer, no whitespaces or duplicate names (group or peer)*
+| peer | `peer_ip` | x.x.x.x |  Yes | *IP address of the peer*
+| peer | `descr` | string |  Yes | *Description of the peer*
+| both | `switch` | list |  Yes | *List of switches (even if is only 1) to create the group and peers on*
+| both | `tenant` | list |  No | *List of tenants (even if is only 1) to create the peers under*
+| both | `remote_as` | integer | Yes | *Remote AS of this peer or if group all peers within that group*
+| both | `timers` | [klv, htm] | No | *List of [keepalive, holdtime], if  not defined uses [3, 9] seconds*
+| both | `bfd` | True | No | *Enable BFD for an individual peer or all peers in the group (disabled by default)*
+| both | `password` | string | No | *Plain-text password to authenticate a peer or all peers in group (default none)*
+| both | `default` | True | No | *Advertise default route to a peer or all peers in the group (default False)*
+| both | `update_source` | string | No | *Set the source interface used for peerings (default not set)*
+| both | `ebgp_multihop` | integer | No | *Increase the number of hops for eBGP peerings (2 to 255)*
+| both | `next_hop_self` | True | No | *Set the next-hop to itself for any advertised prefixes (default not set)*
 
-***grp*** or ***peer:*** These settings can be configured under the group, the peer, or both. The native OS handles the duplication of settings (between group and peers) and the hierarchy (peer settings taking precedence). For any of the non-mandatory settings the dictionary only needs to be included if that settings is to be configured.
-If the tenant is not specified (dictionary not defined) it the group/peer will be added to the default global routing table
+***inbound*** or ***outbound:*** Can be optionally set under group or peer to filter BGP advertisements and/ or BGP attribute manipulation
 
-| Key      | Value | Mandatory | Information |
-|----------|-------|-----------|-------------|
-| switch | `list` |  Yes | *List of switches to create the group and peers on. Has to be list even if is only 1*
-| tenant | `list` |  No | *List of tenants to create the peers under. Has to be list even if is only 1*
-| remote_as | `integrar` | Yes | *Remote AS of this peer or if set under the group all peers within that group*
-| timers | [keepalives, holdtime] | No | *If not defined uses keepalive of 3 and holdtime of 9 seconds. Default timers are set in the group*
-| bfd | `True` | No | *Enable BFD for an indivdual peer or all peers in the group. By default is disabled globally*
-| password | `string` | No | *Authentication for an indivdual peer or all peers in the group. By default no password set*
-| default | `True` | No | *Enable advertisement of the default route to an indivdual peer or all peers in the group. By default not set*
-| update_source | `string` | No | *Set the source interface (loopback) for BGP peers. By default it is not set*
-| ebgp_multihop | `integrar` | No | *Increase the number of hops for BGP peerings (2 to 255). By default it is set to 1*
-| next_hop_self | `True` | No | *Set the next hop to itself for any advertised prefixes. By default it is not set*
-
-***inbound*** or ***outbound:*** These two dictionaires can be set under the group or peers and hold the settings for prefix BGP attribute manipulation and filtering. Dependant on where this is applied the route-maps and prefix-lists incorporate the group or peer name. If everything is defined the order in the route-map is *BGP_ATTR*, *deny_specific*, *allow_specific*, *allow_all*, *deny_all*.
-They take either a list of prefixes (can include 'ge' and/or 'le' in the element) or the single special keyword string ('any' or 'default'). This MUST be a single string, NOT within the list of prefixes.
+- The naming of the route-maps and prefix-lists are dependant on where they are applied (group or peer)
+- All attribute settings are dictionaries with the key being the attribute and the value the prefixes it is applied to
 
 | Key      | Value | Direction |Information |
 |----------|-------|-------|-------------|
-| weight | `dict` | inbound | *The keys are the weight and the value a list of prefixes or keywords ('any' or 'default')*
-| pref | `dict` | inbound | *The keys are the local preference and the value a list of prefixes or keywords ('any' or 'default')*
-| med | `dict` | outbound | *The keys are the med value and the values a list of prefixes or keywords ('any' or 'default')*
-| as_prepend | `dict` | outbound | *The Keys are the number of times to add the ASN and the values a list of prefixes or keywords ('any' or 'default')*
-| allow | `list`, any, default | both | *Can be a list of prefixes or special keywords to advertise 'any' or just the default route*
-| deny | `list`, any | both | *Can be a list of prefixes or special 'any' keyword to advertise nothing*
+| `weight` | dict | inbound | *Keys are the weight and the value a list of prefixes or keyword ('any' or 'default')*
+| `pref` | dict | inbound | *Keys are the local preference and the value a list of prefixes or keyword*
+| `med` | dict | outbound | *Keys are the MED value and the values a list of prefixes or keyword*
+| `as_prepend` | dict | outbound | *Keys are the number of times to add the ASN and values a list of prefixes or keyword*
+| `allow` | list, any, default | both | *Can be a list of prefixes or a keyword to advertise just the default route or anything*
+| `deny` | list, any, default | both | *Can be a list of prefixes or a keyword to not advertise the default route or anything*
 
-***bgp.tenants:*** List of VRFs to advertise networks, summarization and redistribution. The tenant dictionary is not mandadatory, it is only needed if any of these advertisemnt methods is being used. The *switch* can set globally for all network/summary/redist in a VRF or be overidden on per-prefix basis. As per the inbound/outbound dictionaries 'any' and 'default' keywords can be used rather than the list of prefixes for the *allow* dictionary or the value of the *metric* dictionary.
+***bgp.tnt_advertise:*** Optionally advertise prefixes on a per-tenant basis (list of VRFs) using network, summary and redistribution. The `switch` can be set globally for all network/summary/redist in a VRF and be overridden on an individual per-prefix basis
 
-| Key      | Value | Mandatory | Information |
-|----------|-------|-----------|-------------|
-| name | `string` | Yes | *Must be a single VRF on which the advertisement (network), summary and redistribution is configured. Use 'default' if needs to go in the global routing table*
-| switch | `list` | Yes (in here or nested dict) | *List of a single or multiple switches. Can be set for all (network, summary, redist) or indvidual prefix/redist*
+- ***network:*** List of prefixes to be advertised on a per-switch basis (*network* cmd). Use multiple lists to differ switch advertisement. If a device has 2 different *network.prefix* statements it will get a combination of them both (merged), so *network* statements for all prefixes
+- ***summary:*** For summaries (*aggregate-address*) with the same attributes (*switch* and *summary_only*) group them within the 1 list element
+- ***redist:*** Each list element is the redistribution type (*ospf process*, *static* or *connected*) with the redistributed prefixes weighted (`metric`) and/or filtered (`allow`). If the allow list is not set it is allow any (empty route-map). Can only have one each of `connected` and `static` per-switch, first occurrence is used. The switch set under the redistribution type is preferred over that set in `process.switch`, is no merging.
 
-***bgp.tenants.network:*** List of prefixes to be advertised. Only need to have multiple lists of prefixes if the advertisents are different for different switches, otherwise all the prefixes can be in the one list of the prefix dictionary.
-| Key      | Value | Mandatory | Information |
-|----------|-------|-----------|-------------|
-| prefix | `list` | Yes | *List of prefixes to advertised to all switches set under tenant or this list of specific switches*
-| switch | `list` | Yes (in here or tenant) | *List of switches to advertise these prefixes to*
+| Set in          | Key    | Value    | Mand | Information |
+|-----------------|--------|----------|-----------|-------------|
+| tnt_advertise   | `name`   | string | Yes  | *A single VRF that is being advertising into (use 'global' for global routing table)*
+| all             | `switch` | list   | Yes  | *What switches to redistribute on, inherits process.switch if not set*
+| network/summary | `prefix` | list   | Yes  | *List of prefixes to advertise. Each list can be advertised to different sets of switches*
+| summary         | `filter` | summary-only | No | *Only advertise the summary, suppress all other prefixes within it (disabled by default)*
+| redist          | `type`   | string | Yes | *Redistribute ospf_process (whitespace before process), static or connected*
+| redist          | `metric` | dict | No | *Add metric to redistributed prefixes. Keys are the MED value and values a list of prefixes or keyword ('any' or 'default'). Cant use metric with connected*
+| redist          | `allow`  | list, any, default | No | *List of prefixes (can use 'ge' and/or 'le'), interfaces (for connected) or keyword ('any' or 'default') to redistribute. Is placed after the metric in the RM sequence*
 
-***bgp.tenants.summary:*** List of summarizations. If the *switch* and *summary_only* elements are the same for all prefixes only need the one list element and list all the summarizations in the one list of the prefix dictionary.
-| Key      | Value | Mandatory | Information |
-|----------|-------|-----------|-------------|
-| prefix | `list` | Yes | *List sumarizations to apply on all switches set under tenant or this list of specific switches*
-| filter | summary-only | No |*Add this dictionary to only advertise the summary and supresses any prefixes below it (disabled by default)*
-| switch | `list` | Yes (in here or tenant) | *List of switches to apply sumarization on*
+Advanced settings (*svc_rte.adv*) allow the changing of the default routing protocol timers and naming convention of the route-maps and prefix-lists used for advertisement and redistribution.
 
-***bgp.tenants.redist:*** Each redistribution list element is the redistribution type, can be *ospf_xx*, *static* or *connected*. Redistributed prefixes can be filtered (*allow*) or weighted (*metric*) with the route-map order being *metric* and then *allow*. If the allow list is not set it will allow any (empty route-map).
-| Key      | Value | Mandatory | Information |
-|----------|-------|-----------|-------------|
-| type | `string` | Yes | *What is to be redistrbuted into BGP. Can be ospf_xxx, static or connected*
-| metric | `dict` | No | *The keys are the med value and the values a list of prefixes or keyword ('any' or 'default'). Cant use with metric with connected*
-| allow | `list`, any, default | No | *List of prefixes (if connected list of interfaces) or keyword ('any' or 'default') to redistribute*
-| switch | `list` | Yes (in here or tenant) | *List of switches to apply redistribution on*
+The filter_plugin method ***create_svc_rte_dm*** is run for each inventory device to produce a data model of the routing configuration for that device. The outcome is a list of seven per-device data models that are used by the *svc_rte_tmpl.j2* template.
 
-### OSPF
-
-A list of non-backbone OSPF processes which have further nested dictionaries of OSPF interfaces, summarization and redistribution. The list of switches that the OSPF process is configured on can be defined under the main process, any of the nested dictionaires, or both. Nested dictionary configuration takes precedence.
-At a bare minimun only the mandatory settings are needed, all others settings are optional.
-
-***ospf:*** List of non-backbone OSPF processes and the global settings for each process.
-
-| Key      | Value | Mandatory | Information |
-|----------|-------|-----------|-------------|
-| process | `integrar` or `string` | Yes | *Can be a number or word*
-| tenant | `string` | No | *VRF to be enabled in this OSPF process. If this dict is not defined uses the default global routing table*
-| rid | x.x.x.x | No | *Router-ID for this OSPF process. If not defined will use highest IP of a loopback address*
-| bfd | `True` | No | *Enable BFD for all OSPF neighbors. Once enabled can be disabled on a per-interface basis by setting OSPF timers*
-| default_orig | `True` or always | No | *By default is disabled, options are enabled (True) or always (send even if no default route in routing table)*
-| switch | `list` | Yes (in here or nested dicts) | *List of switches to create OSPF process on, applies to all nested dictionaries unless also defined in those*
-
-***ospf.interface:*** List of OSPF interfaces and the settings. Each list element is a group of interfaces with the same group of settings (same area number, same interface type, etc).
-*passive-interface* is enabled globally and automatially disabled on all configured interfaces. This can be enabled on a per-interface basis.
-If authentication is enabled for an interface it is enabled globally for that area so the same dictionary setting (*password*) is needed on all interfaces in that area.
-
-| Key      | Value | Mandatory | Information |
-|----------|-------|-----------|-------------|
-| name | `list` | Yes | List of one or more interfaces which have these same settings. Use interface full name (*Ethernet*) or *Vlan*
-| area | x.x.x.x | Yes | *Area this group of interfaces are in, must be in dotted decimal format*
-| cost | `integrar` | No | *To statically set the interfaces OSPF cost, can be 1-65535*
-| authentication | `string` | No | *Enables authentication for the area and a password (Cisco type 7) for this interface*
-| area_type | `string` | No | *Can be stub, nssa, stub/nssa no-summary, nssa default-information-originate or nssa no-redistribution*
-| passive | `True` | No | *Make the interface passive so it wont form OSPF peers. By default all interfaces are False (non-passive)*
-| timers | [hello, holdtime] | No | *Set the hello and deadtime timers (10/40). If BFD is enabled globally BFD will be disabled for this interface*
-| type | point-to-point | No | *By default all interfaces are broadcast, add to change to PtP. All interfaces in the same area must be of the same type*
-| switch | `list` | Yes (in here or process) | *What switches to enable these OSPF interfaces on, takes precedence over process switch setting*
-
-***ospf.summary:*** List of summarizations. If the *switch*, *filter* and *area* dictionaries are the same for all prefixes only need the one list with all the summaries in that list of the prefix dictionary.
-
-| Key      | Value | Mandatory | Information |
-|----------|-------|-----------|-------------|
-| prefix | `list` | Yes | *List of sumarizations to apply on all switches set under the process or this list of specific switches*
-| area | x.x.x.x | No | *By default it is a LSA5 summary, by adding an area it makes it a LSA3 summary (summarise from that area)*
-| filter | not-advertise | No | *Stops it advertising the summary and subordinate subnets, is basically filtering*
-| switch | `list` | Yes (in here or process) | *What switches to enable these sumarizations, takes precedence over process switch setting*
-
-***ospf.redist:***: Each redistribution list element is the redistribution type, can be ospf_xx, bgp_xx, static or connected. Redistributed prefixes can be filtered (allow) or weighted (metric) with the route-map order being metric and then allow. If the allow list is not set it will allow any (empty route-map).
-
-| Key      | Value | Mandatory | Information |
-|----------|-------|-----------|-------------|
-| type | `string` | Yes | *What is to be redistrbuted into this OSPF process, bgp_xx, ospf_xxx, static or connected*
-| metric | `dict` | No | *The keys are the med value and the values a list of prefixes or keyword (‘any’ or ‘default’). Cant use with metric connected*
-| allow | `list`, any, default | No | *List of prefixes (if connected list of interfaces) or keyword (‘any’ or ‘default’) to redistribute*
-| switch | `list` | Yes (in here or process) | *What switches to redistribute on, takes precedence over process switch setting*
-
-
+- **all_pfx_lst**: *List of all prefix-lists with each element in the format [name, seq, permission, prefix]*
+- **all_rm**: *List of all route-maps with each element in the format [name, seq, permission, prefix, [attribute, value]]. If no BGP attributes are set in the RM the last entry in the list will be [null, null]*
+- **stc_rte:** *Per-VRF dictionaries (VRF is the key) of lists of static routes with interface and/or gateway, optional AD and destination VRF*
+- **group:** *Dictionaries of BGP groups (group is the key) that have peers on this device. The value is dictionaries of any group settings*
+- **peer:** *Dictionaries of tenants (VRFs) that have the following nested dictionaries:*
+  - *peers: Dictionary of peers (key is the peer) with the value being dictionaries of the peers settings*
+  - *network: List of networks to be advertised by BGP*
+  - *summary: Dictionary of summaries with the key being the prefix and value either null (doesn't suppress) or summary-only*
+  - *redist: Two dictionaries of the route-map name (rm_name) and redistribution type (connected, static, etc)*
+- **ospf_proc:** *Dictionary of VRFs (key) and the OSPF process settings for each VRF (settings configured under the process)*
+- **ospf_intf:** *Dictionary of interfaces (key) that have OSPF enabled, the values are the interface specific OSPF settings*
 
 ## Passwords
 
-Are 3 main types of passwords used within the playbooks. The way that NAPALM deasl with them when applying is slightly different.
+Are 3 main types of passwords used within the playbooks. The way that NAPALM deals with them when applying is slightly different.
 They are all stored within the ansible.yml file using Vault
 
-- BGP/OSPF: In the varible file it is in as plain text but in the device running configuration is encrytped
+- BGP/OSPF: In the variable file it is in as plain text but in the device running configuration is encrypted
 - Users: Has to be in encrypted format (type-5) in the variable file
-- TACACS: Has to be in the encrypted format (type-7) in the variable. Could use type-6 but would also need to generate a master key, may revist
+- TACACS: Has to be in the encrypted format (type-7) in the variable. Could use type-6 but would also need to generate a master key
+
+On top of this there is also the username and password used by Napalm to log into devices that is defined under `ans.creds_all`.
 
 ## Input validation
 
-Rather than validating configuration on devices it runs before any device configuration and validate the details entered in the variable files are correct. The idea of this pre-validation is to ensure the values in the variable files are in the correct format, have no typos and conform to the rules of the playbook. Catching these errors early allows the playbook to failfast before device connection and configuration.
+Pre-task input validation checks are run on the variable files with the goal being to highlight any problems with variable before any of the fabric build tasks are started. *Fail fast based on logic rather failing halfway through a build*. Pre-validation checks for things such as missing mandatory variables, variables are of the correct type (str, int, list, dict), IP addresses are valid, duplicate entires, dependencies (VLANs assigned but not created), etc. It wont catch everything but will eliminate a lot of the needless errors that would break a fabric build.
 
-The plugin does the actual validation with a result returned to the Ansible Assert module which decides if the playbook fails.
-All the error messages returned by pre_val start with the nested location of the variable to make it easier to find. For example *svc_intf.intf.single_homed.ip_vlan* is a singled homed interfaces ip_vlan variable within the *service_interface.yml* variable file.
+A combination of *Python assert* within a filter plugin (to identify any issues) and *Ansible assert* within the playbook (to return user-friendly information) is used to achieve the validation. All the error messages returned by pre_val start with the nested location of the variable to make it easier to find.
 
-It is run using the *post_val* tag and will conditionally only check variable files that have been defined under *var_files*. It can be run using the inventory plugin but will fail if any of the values useded to create inventory are wrong so better use a dummy host file.
-`ansible-playbook playbook.yml -i hosts --tag post_val`
-`ansible-playbook playbook.yml -i inv_from_vars_cfg.yml --tag post_val`
+It is run using the *post_val* tag and will conditionally only check variable files that have been defined under *var_files*. It can be run using the inventory plugin but will fail if any of the values used to create inventory are wrong so better use a dummy host file.
+
+```none
+ansible-playbook playbook.yml -i hosts --tag post_val
+ansible-playbook playbook.yml -i inv_from_vars_cfg.yml --tag post_val
+```
 
 A full list of what variables are checked and the expected input can be found in the header notes of *input_validate.py*.
 
 ## Playbook Structure
 
-The playbook is divided into 4 sections with roles used to do all the templating and validation.
+The main playbook (*PB_build_fabric.yml*) is divided into 3 sections with roles used to do the data manipulation and templating.
 
-- pre_tasks: Creates the file structure and runs the pre validation tasks
-- task_roles: Roles are used to to create the templates and in some cases use pluggins to create new data models
-  - base: From templates and base.yml creates the base configuration snippets (aaa,  logging, mgmt, ntp, etc)
-  - fabric: From templates and fabric.yml creates the fabric configuration snippets (connections, OSPF, BGP)
-  - services: Has per-service type tasks and templates for the services to run on top of the fabric
-    - svc_tnt: From templates and services_tenant.yml creates the tenant config snippets (VRF, SVI, VXLAN, VLAN)
-    - svc_intf: From templates and services_interface.yml creates the interface config snippets (routed, access, trunk)
-    - svc_rte: From templates and ervice_routing.yml creates the tenant routing config snippets (BGP, OSPF, static routes, redistribution)
-  - intf_cleanup: Based on interfaces used in fabric and svc_intf defaults all other interfaces
-- task_config: Assembles the config snippets into the one file and applies as a config_replace
-- post_tasks: A validate role creates and compares *desired_state* (built from variables) against *actual_state*
-  - validate: custom_validate uses napalm_validate feed with device output to validate things not covered by napalm
-    - nap_val: For elements covered by napalm_getters creates desired_state and compares against actual_state
-    - cus_val: For elements not covered by napalm_getters creates desired_state and compares against actual_state
+- **pre_tasks:** Pre-validation checks and deletion/creation of file structure (at each playbook run) to store config snippets
+- **tasks:** Imports tasks from roles which in turn use templates (*.j2*) and vars (*.yml*) to create the config snippets
+  - *base:* From *bse_tmpl.j2* and *base.yml* creates the base configuration snippet (aaa, logging, mgmt, ntp, etc)
+  - *fabric:* From *fbc_tmpl.j2* and *fabric.yml* creates the fabric configuration snippet (interfaces, OSPF, BGP)
+  - *services:* Per-service-type *tasks*, templates and plugins (create data models) to create the config for services that run on top of the fabric
+    - *svc_tnt:* From *svc_tnt_tmpl.j2* and *services_tenant.yml* creates the tenant config snippet (VRF, SVI, VXLAN, VLAN)
+    - *svc_intf:* From *svc_intf_tmpl.j2* and *services_interface.yml* creates the interface config snippet (routed, access, trunk, Loopback)
+    - *svc_rte:* From *svc_rte_tmpl.j2* and *service_route.yml* creates the tenant routing config snippet (BGP, OSPF, routes, redist)
+  - *intf_cleanup:* Based on the interfaces used in fabric creates config snippet to default all the other interfaces
+- **task_config:** Assembles the config snippets into the one file and applies using Napalm replace_config
+
+The post-validation playbook (*PB_post_validate.yml*) uses the validation role to do the majority of the work.
+
+- **pre_tasks:** Creates the file structure to store validation files (*desired_state*) and the compliance report
+- **roles:** Imports the *services* role so that the filter plugins within it can be used to create the service data models for validation
+- **tasks:** Imports tasks from roles and checks the compliance report result
+  - *validation:* Per-validation engine *tasks* to create *desired_state*, gather the *actual_state* and produce a compliance report
+    - *nap_val*: For elements covered by napalm_getters creates desired_state and compares against actual_state
+    - *cus_val*: For elements not covered by napalm_getters creates desired_state and compares against actual_state
+  - *compliance_report:* Loads validation report (created by *nap_val* and *cus_val*) and checks whether it complies (passed)
 
 ## Directory Structure
 
-The following directory structure is created within *~/device_configs* to hold the configuration snippets, validation desired_state files,  and compliance reports. The base location can be changed using *ans.dir_path*.
+The directory structure is created by default within *~/device_configs* to hold the configuration snippets, output (diff) from applied changes, validation *desired_state* files and compliance reports. The base location for this directory can be changed using the `ans.dir_path` variable.
 
-```bash
+```none
 ~/device_configs/
 ├── DC1-N9K-BORDER01
 │   ├── config
@@ -632,105 +638,97 @@ The following directory structure is created within *~/device_configs* to hold t
 
 ## Installation and Prerequisites
 
-It using a Python virtual environment change the NAPLAM library and plugin locations in the *ansible.cfg* to match your environment.
+The deployment has been tested on `NXOS 9.3(5)` using `ansible 2.10.6` and `Python 3.7.10`. Clone the repository, create a virtual environment and install the python packages (ansible, napalm-ansible & PyYAML). Once installed run `napalm-ansible` to get the location of the napalm-ansible paths and add these to *ansible.cfg* under *[defaults]*.
 
-```bash
-library = /home/ste/virt/ansible_2.8.4/lib/python3.6/site-packages/napalm_ansible/modules
-action_plugins = /home/ste/virt/ansible_2.8.4/lib/python3.6/site-packages/napalm_ansible/plugins/action
+```none
+git clone https://github.com/sjhloco/build_fabric.git
+python3.7 -m venv ~/virt/venv_ansible2.10
+source ~/virt/venv_ansible2.10/bin/activate
+pip install -r build_fabric/requirements.txt
 ```
 
-The following base configuration needs to be manually added on all the devices.
+Before any configuration can be deployed using Ansible a few things need to be manually configured on all devices.
 
 - Management IP address and default route
-- The features *nxapi* and *scp-server* are required for Naplam *config_replace*
-- Image validation can take a while on vNXOS so is best to be done so beforehand
+- The features *nxapi* and *scp-server* are required for Naplam *replace_config*
+- Image validation can take a while on NXOS so is best to be done so beforehand
 
-```bash
+```none
 interface mgmt0
   ip address 10.10.108.11/24
 vrf context management
   ip route 0.0.0.0/0 10.10.108.1
 feature nxapi
 feature scp-server
-boot nxos bootflash:/nxos.9.2.5.bin
+boot nxos bootflash:/nxos.9.3.5.bin
 ```
 
-- The custom TCAM allocation (leafs and/or borders) as requires a reboot. This can change dependant on model, for example vNXOS requires TCAM for arp-ether whereas 9300 series don't. Any changes made need correcting in /roles/base/templates/nxos/bse_tmpl.j2 to keep it idempotent.
+- Leaf and border switches also need the TCAM allocation changed to allow for arp-suppression. This can differ dependant on device model, any changes made need correcting in `/roles/base/templates/nxos/bse_tmpl.j2` to keep it idempotent.
 
-```bash
+```none
 hardware access-list tcam region racl 512
 hardware access-list tcam region arp-ether 256 double-wide
+copy run start
+reload
 ```
 
-*bse.users.password* holds the password *type5* encrypted, if you don't know this can enter the user on the devices now and get the password from the running config in the correct format. The default username/password in the playbook is *admin/ansible*.
+The default username/password for all devices is *admin/ansible* and is stored in the variable `bse.users.password`. Swap this out for the encrypted as *type5* password from the running config. The username and password used by Napalm to connect to devices is stored in `ans.creds_all` and will also need changing (plain-text so use vault).
 
-Before the playbook can be run against the switches the SSH keys need adding on the Ansible host (*~/.ssh/known_hosts*). The *ssh_key_playbook.yml* playbook (in *ssh_keys* directory) can be run to add these automatically, just need to add the device`s management IPs to the *ssh_hosts* file.
+Before the playbook can be run the devices SSH keys need adding on the Ansible host (*~/.ssh/known_hosts*). *ssh_key_playbook.yml* (in *ssh_keys* directory) can be run to add these automatically, you just need to populate the device`s management IPs in the *ssh_hosts* file.
 
-```bash
+```none
 sudo apt install ssh-keyscan
 ansible-playbook ssh_keys/ssh_key_add.yml -i ssh_keys/ssh_hosts
 ```
 
-## Physical vs virtual
 
-The OSPF peering over the VPC allows for backup path over VPC if lost spine link.
-This SVI VLAN needs to be special infra vlan in order to use an SVI as an underlay interface (one that forwards/originates VXLAN-encapsulated traffic).
-This cmd does not work on vNXOS, unhash on physical (/roles/base/templates/nxos/fbc_tmpl.j2)
-
-```bash
-system nve infra-vlans {{ fbc.adv.mlag.peer_vlan }}
-```
-
-vNXOS requires TCAM for arp-ether whereas 9300 series don't
-```
-hardware access-list tcam region arp-ether 256 double-wide
-```
-
-Has a virtual supervisor so need 'sup-1' at end of cmd
-
-boot nxos bootflash:/nxos.9.3.5.bin sup-1
-switch(config)# show module
-Mod Ports             Module-Type                      Model           Status
---- ----- ------------------------------------- --------------------- ---------
-1    64   Nexus 9000v 64 port Ethernet Module   N9K-X9364v            ok
-27   0    Virtual Supervisor Module             N9K-vSUP              active *
 
 
 ## Running playbook
 
-The device configuration is applied using Napalm with the change differences always saved to file (in */device_configs/diff*) and optionally printed to screen. Napalm *commit_changes* is set to true meaning that Ansible *check-mode* is used for dry-runs.
+The device configuration is applied using Napalm with the differences always saved to file (in */device_configs/diff*) and optionally printed to screen. Napalm *commit_changes* is set to true meaning that Ansible *check-mode* is used for dry-runs. It can take 3 to 4 minutes to deploy full configuration when including the service roles so the Napalm default timeout has been increased to 240 seconds.
 
-Tags are used to allow for only certain roles or combination of roles to be run.
+Due to the declarative nature of the playbook and the inheritance between roles there are only certain number of combinations and order of the roles that can be deployed.
 
-| tag      | Description |
-|----------|-------------|
-| pre_val  | Checks var_file contents are valid and conform to script rules (network_size, address format, etc)  |
-| bse      | Generates the base configuration snippet |
-| fbc      | Generates the fabric and intf_cleanup configuration snippets |
-| bse_fbc  | Generates, joins and applies the base, fabric and inft_cleanup configuration snippets |
-| rb       | Reverses the changes by applying the rollback configuration |
-| diff     | Prints the differences to screen (is still also saved to file) |
+| tag            | Description |
+|----------------|-------------|
+| `pre_val`      | Checks var_file contents are valid and conform to script rules (network_size, address format, etc)  |
+| `bse_fbc`      | Generates, joins and applies the base, fabric and inft_cleanup configuration snippets |
+| `bse_fbc_tnt`  | Generates, joins and applies the base, fabric, inft_cleanup and tenant config snippets
+| `bse_fbc_intf` | Generates, joins and applies the base, fabric, tenant, interface and inft_cleanup config snippets
+| `full`         | Generates, joins and applies the base, fabric, tenant, interface, inft_cleanup and route config snippets
+| `rb`           | Reverses the changes by applying the rollback configuration
+| `diff`         | Prints the differences to screen (is still also saved to file)
 
-- *pre_val* should be run first on its own to find any possible errors before generating or pushing configuration to devices
-- *bse* and *fbc* will only generate the config snippet and save it to file. No connections are made to devices or changes applied
-- *diff* tag can be used with *bse_fbc* or *rb* to print the configuration changes to screen
+- *diff* tag can be used with *bse_fbc_tnt*, *bse_fbc_intf*, *full* or *rb* to print the configuration changes to screen
 - Changes are always saved to file no matter whether *diff* is used or not
-- *-C* or *--check-mode* will do everything except actually apply the configuration<p style="margin-top: -20px;"></p>
+- ***-C*** or ***--check-mode*** will do everything except actually apply the configuration
 
 ***pre-validation:*** Validates the contents of variable files defined under *var_files*. Best to use dummy host file instead of dynamic inventory.
 {{< cfg_syntax"ansible-playbook PB_build_fabric.yml -i [hosts] --tag post_val">}}
 
-***Generate the base config:*** Creates the base config snippets and saves to file
-{{< cfg_syntax"ansible-playbook PB_build_fabric.yml -i inv_from_vars_cfg.yml --tag [bse]">}}
-
 ***Generate the complete config:*** Creates the config snippets and compares against what is on the device to see what will be changed
-{{< cfg_syntax"ansible-playbook PB_build_fabric.yml -i inv_from_vars_cfg.yml --tag '[bse_fbc, diff]' [-C]">}}
+{{< cfg_syntax"ansible-playbook PB_build_fabric.yml -i inv_from_vars_cfg.yml --tag '[full, diff]' [-C]">}}
 
 ***Apply the config:*** Replaces current config on the device. The output is by default automatically saved */device_configs/diff*
-{{< cfg_syntax"ansible-playbook PB_build_fabric.yml -i inv_from_vars_cfg.yml --tag [bse_fbc]">}}                                                        |
+{{< cfg_syntax"ansible-playbook PB_build_fabric.yml -i inv_from_vars_cfg.yml --tag [full]">}}
+
+All roles can be deployed individually on there own to just to create the config snippet files, oo connections are made to devices or changes applied
+
+| tag        | Description |
+|------------|-------------|
+| `bse`      | Generates the base configuration snippet saved to *device_name/config/base.conf*
+| `fbc`      | Generates the fabric and intf_cleanup configuration snippets saved to *fabric.conf* and *dflt_intf.conf*
+| `tnt`      | Generates the tenant configuration snippet saved to *device_name/config/svc_tnt.conf*
+| `intf`     | Generates the interface configuration snippet saved to *device_name/config/svc_intf.conf*
+| `rte`      | Generates the route configuration snippet saved to *device_name/config/svc_rte.conf*
+
+***Generate the fabric config:*** Creates the fabric and interface cleanup config snippets and saves them to *fabric.conf* and *dflt_intf.conf*
+{{< cfg_syntax"ansible-playbook PB_build_fabric.yml -i inv_from_vars_cfg.yml --tag [fbc]">}}
+
 ## Post Validation checks
 
-The desired state is what you expect the fabric to be in once it has been deployed. The declaration of how the fabric should be built is made in the variables files, therefore it makes sense that these are used to build the desired state validation file. The file a list of dictionaries with the *key* being what *napalm_getter* or command being checked and the *value* the expected result. This is compared against the actual state of the fabric.
+The desired state is what you expect the fabric to be in once it has been deployed. The declaration of how the fabric should be built is made in the variables files, therefore it makes sense that these are used to build the desired state validation file.
 
 *Napalm_validate* can only perform a compliance on anything that has a getter, for anything not covered by this the *custom_validate* filter plugin is used. The plugin uses the same *napalm_validate* framework but the actual state is supplied through a static input file (got using *napalm_cli*) rather than a getter.
 
@@ -738,13 +736,11 @@ The results of the napalm_validate (*nap_val.yml*) and custom_validate (*cus_val
 
 ### napalm_validate
 
-Napalms very nature is to abstract the vendor so along the getter exists the template files are the same for all vendors. The following elements are validated by this module and the roles that use them are in brackets.
+Napalms very nature is to abstract the vendor so as long the getter exists the template files are the same for all vendors. The following elements are validated by this module with the roles that use them are in brackets.
 
 - ***hostname*** *(fbc): Automatically created device names are correct*
 - ***lldp_neighbors*** *(fbc): Devices physical fabric and MLAG connections are correct*
-- ***bgp_neighbors*** *(fbc, tnt): Overlay neighbors are all up (strict). fbc doesn't check for sent/rcv prefixes, tnt expects prefixes*
--
-There was originally ICMP validation of all the loopbacks but it took too long to complete. At the end of the day if a loopback was not up you would find out through one of the other tests so I decided not to use it (left the config in but is hashed out).
+- ***bgp_neighbors*** *(fbc, tnt): Overlay neighbors are all up (strict). fbc doesn't check for sent/rcv prefixes, this is done by tnt*
 
 An example of the desired and actual state file formats.
 
@@ -763,17 +759,19 @@ An example of the desired and actual state file formats.
 
 *custom_validate* requires a per-OS type template file and per-OS type method within the *custom_validate.py* filter_plugin. The command output can be collected via Naplam or Ansible Network modules, ideally as JSON or you could use NTC templates or the genieparse collection to do this. Within *custom_validate.py* it matches based on the command and creates a new data model that matches the format of the desired state. Finally the *actual_state* and *desired_state* are fed into napalm_validate using its *compliance_report* method. The following elements are checked, the roles that use these checks are in brackets
 
-- show ip ospf neighbors detail (fbc): *Underlay neighbors are all up*
-- show port-channel summary (fbc, intf): *Port-channel state and members (strict) are up*
-- show vpc (fbc, tnt, intf): *MLAG peer-link, keep-alive state, vpc status and active VLANs*
-- show interfaces trunk	(fbc, tnt, intf): *Allowed vlans and stp forwarding vlans*
-- show ip int brief include-secondary vrf all (fbc, tnt, intf): *L3 interfaces in fabric and tenants*
-- show nve peers (tnt): *All VTEP tunnels are up*
-- show nve vni (tnt): *All VNIs are up, have correct VNI number and VLAN mapping*
-- show interface status	(intf): *State and port type*
+- ***show ip ospf neighbors detail*** *(fbc): Underlay neighbors are all up (strict)*
+- ***show port-channel summary*** *(fbc, intf): Port-channel state and members (strict) are up*
+- ***show vpc*** *(fbc, tnt, intf): MLAG peer-link, keep-alive state, vpc status and active VLANs*
+- ***show interfaces trunk*** *(fbc, tnt, intf): Allowed vlans and STP forwarding vlans*
+- ***show ip int brief include-secondary vrf all*** *(fbc, tnt, intf): Layer3 interfaces in fabric and tenants*
+- ***show nve peers*** *(tnt): All VTEP tunnels are up*
+- ***show nve vni*** *(tnt): All VNIs are up, have correct VNI number and VLAN mapping*
+- ***show interface status*** *(intf): State and port type*
+- ***show ip ospf interface brief vrf all*** *(rte):* *Tenant OSPF interfaces are in correct process, area and are up*
+- ***show bgp vrf all ipv4 unicast*** *(rte):* *Prefixes advertised by network and summary are in the BGP table*
+- ***show ip route vrf all*** *(rte):* *Static routes are in the routing table with correct gateway and AD*
 
-To aid with creating new validations the custom_val_builder is a stripped down version of custom_validate to use to build new validations. The README has the process but can basically feed in either feed in static dictionary file or device output to aid in the creation of the method code and template snippet before testing and then movign to the main playbook.
-
+An example of the desired and actual state file formats
 
 ```yaml
 cmds:
@@ -786,16 +784,32 @@ cmds:
         state: FULL
 ```
 
+To aid with creating new validations *custom_val_builder* directory is a stripped down version of custom_validate to use to build new validations. The README has more detail on how to run it and the process, the idea being to walk through each stage of creating the desired and actual state ready to add to the main playbook.
+
 ### Running Post-validation
 
+Running post-validation is hierarchial as the addition of elements in later roles effects the validation outputs in earlier roles. For example, if extra VLANs or port-channels are added in the services roles this will effect the bse_fbc post-validate output of *show vpc* and *show port-channel summary*. For this reason post-validation must be run for the current role and all roles before it. This is done automatically by Jinja template inheritance as calling a template with the *extends* statement will also render the inheriting templates.
 
-NEED ADDING ONCE FINISH BLOG
+Tags can be used to selectively decide on the post-validation tests performed. There is no differentiation between *naplam_validate* and *custom_validate*, both are run as part of the validation tasks.
 
-```bash
-cat ~/device_configs/reports/DC1-N9K-SPINE01_compliance_report.json | python -m json.tool
+| tag      | Description |
+|----------|-------------|
+| `fbc_bse` | Runs validation of the base fabric, does not validate the services on it |
+| `tnt`     | Runs validation of the base fabric and the tenants on the fabric |
+| `intf`    | Runs validation of the base fabric, tenants and additional non-fabric (service) interfaces |
+| `full`    | Runs validation of the base fabric, tenants and additional non-fabric (service) interfaces and routing |
+
+***Run fabric validation:*** Runs validation against the *desired state* got from all the variable files
+
+```none
+ansible-playbook PB_post_validate.yml -i inv_from_vars_cfg.yml --tag full
 ```
 
+***Viewing compliance report:*** Viewing the whole validation report
 
+```none
+cat ~/device_configs/reports/DC1-N9K-SPINE01_compliance_report.json | python -m json.tool
+```
 
 ## Building a new service
 
@@ -810,25 +824,21 @@ Process for building a new service:
 7. pre_tasks: Add a new Ansible assert module play that references the new input_val method
 8. post_checks: use custom_val_builder to build validation tests and then add to 'roles/validate/filter_plugin/custom_validate.py' and 'roles/validate/templates/nxos/val_tmpl.j2'
 
-## Notes and Improvements
-
-Have disabled ping from the napalm validation as took too long, loopbacks with secondary IP address can take 3 mins to come up. If fabric wasnt up BGP and OSPF wouldnt be up, can check other loopbacks as part of services.
-Not sure about rollback, all though says all worked odd switch didnt rollback (full config, not sure if would be same with smaller bits of config).
-
-1. Add routing  services
-
-Nice to have
-
-1. Create a seperate playbook to update Netbox with information used to build the fabric
-2. Add multi-site
-3. Add templates for Arista
-
 ## Caveats
 
--NXOS API: Sometimes stop working if reboot a device or push config. I am not sure if is just happens on virtual devices, suspect so. In NXOS it sasy the API process is up and listening but if you telnet to it port 443 is not listening. To fix disable and renable the feature nxapi
-Buggy, some times just stops working for no reason, think is related to 'nxapi use-vrf management'
+I run N9K on EVE-NG and have had mixed results with the N9Ks. At one time had 12 devices running 9.2.4 and it was pretty stable. The only issue I had pushing changes was that the NXOS API would stop responding at times. In NXOS it said the API process was up and listening but if you telnet to it port 443 is not listening. To fix this you had disable and re-enable the feature nxapi. Removing the command 'nxapi use-vrf management' helped make this more stable.
 
+I tried using 9.3.5 and 9.3.6 but when you get past 5 devices seems to be unstable and cant find a reason why. From 9.3 the interfaces are now on a seperate module, for some reason either that will fail at startup or after a certain amount of time.
 
+```none
+Mod Ports             Module-Type                      Model           Status
+--- ----- ------------------------------------- --------------------- ---------
+1    64   Nexus 9000v 64 port Ethernet Module                         pwr-cycld
+27   0    Virtual Supervisor Module             N9K-vSUP              active *
 
+Mod  Power-Status  Reason
+---  ------------  ---------------------------
+1    pwr-cycld      Unknown. Issue show system reset mod ...
+```
 
-Features can stop working on reboots, for example nve interface disapperared and couldnt add, had to remove feature nv overlay and add bacl
+Was not able to find a reason for it, doesnt seem to be related to resources for either the virtual device or the EVE-NG box. In the end I went back to using `9.2.4`.

@@ -13,9 +13,9 @@ fbc:
     num_leaf: 2                              # Can be 2, 4, 6, 8 or 10
 # Number of interfaces on the device (first and last interface). Is needed to make interfaces declarative and default all interfaces not used
   num_intf:
-    spine: 1,64
-    border: 1,64
-    leaf: 1,64
+    spine: 1,128
+    border: 1,128
+    leaf: 1,128
 
 # To change Fabric routing protocol settings
   route:

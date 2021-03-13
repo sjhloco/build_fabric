@@ -1,13 +1,13 @@
-{# Sets services source interface and VRF used by services in the template #}
-{% if bse.services.src_intf is defined %}
-!!!!! Finish this once have svc_intf back working !!!!!!!
-{# {% for intf in flt_dflt_intf %}
-{% if intf.xxx == bse.services.src_intf %}
-{% set use_vrf = 'xxx' %}
-{% set src_intf = bse.services.src_intf %} #}
-{% else %}
-{% set use_vrf = 'management' %}
-{% set src_intf = 'mgmt0' %}
+{#### Sets services source interface and VRF used by services in the template ####}
+{% set ns = namespace(src_intf='', use_vrf='') %}
+{% if bse.services.src_intf is defined %}{% for intf in flt_svc_intf %}
+{% if intf.intf_num == bse.services.src_intf and (intf.type == 'svi' or intf.type == 'loopback' or intf.type == 'layer3') %}
+{% set ns.src_intf = intf.intf_num %}
+{% set ns.use_vrf = intf.tenant | default('default') %}
+{% endif %}{% endfor %}{% endif %}
+{% if bse.services.src_intf is not defined or ns.src_intf == None %}
+{% set ns.use_vrf = 'management' %}
+{% set ns.src_intf = 'mgmt0' %}
 {% endif %}
 
 {####### VERY IMPORTANT!!!  Without these two lines the napalm config replace will fail #######}
@@ -82,8 +82,8 @@ aaa group server tacacs+ {{ bse.services.tacacs.grp_name }}
 {% for srv in bse.services.tacacs.server %}
     server {{ srv }}
 {% endfor %}
-    source-interface {{ src_intf }}
-    use-vrf {{ use_vrf }}
+    source-interface {{ ns.src_intf }}
+    use-vrf {{ ns.use_vrf }}
 aaa authentication login default group {{ bse.services.tacacs.grp_name }}
 aaa authentication login console local
 aaa authorization commands default group {{ bse.services.tacacs.grp_name }} local
@@ -105,8 +105,8 @@ ip access-list {{ acl.acl_name }}
 {####### SNMP, NTP and logging #######}
 {## SNMP config is dependant on whether SNMP service is defined ##}
 {% if bse.services.snmp is defined %}
-snmp-server source-interface traps {{ src_intf  }}
-snmp-server source-interface informs {{ src_intf }}
+snmp-server source-interface traps {{ ns.src_intf  }}
+snmp-server source-interface informs {{ ns.src_intf }}
 snmp-server host {{ bse.services.snmp.host }} traps version 2c {{ bse.services.snmp.comm }}
 snmp-server community {{ bse.services.snmp.comm }} group network-operator
 snmp-server community {{ bse.services.snmp.comm }} use-ipv4acl {{ bse.mgmt_acl[0]['acl_name'] }}
@@ -115,19 +115,19 @@ snmp-server user admin network-admin auth md5 0x99187947008c0a20401eac07e9fb58c3
 
 {## NTP config is dependant on whether NTP service is defined ##}
 {% if bse.services.ntp is defined %}{% for ntp in bse.services.ntp.server %}
-ntp server {{ ntp }} use-vrf {{ use_vrf }}
+ntp server {{ ntp }} use-vrf {{ ns.use_vrf }}
 {% endfor %}
-ntp source-interface {{ src_intf }}
+ntp source-interface {{ ns.src_intf }}
 {% endif %}
 
 {## SYSLOG config is dependant on whether LOG service is defined ##}
-{% if bse.services.log is defined %}{% for log in bse.services.log.server %}{% if use_vrf != 'default' %}
-logging server {{ log }} {{ bse.services.log.level |default(5)}} use-vrf {{ use_vrf }}
+{% if bse.services.log is defined %}{% for log in bse.services.log.server %}{% if ns.use_vrf != 'default' %}
+logging server {{ log }} {{ bse.services.log.level |default(5)}} use-vrf {{ ns.use_vrf }}
 {% else %}
 logging server {{ log }} {{ bse.services.log.level |default(5)}}
 {% endif %}{% endfor %}
 logging message interface type ethernet description
-logging source-interface {{ src_intf }}
+logging source-interface {{ ns.src_intf }}
 {% endif %}
 !#logging logfile messages 5 size 4194304
 !#logging monitor
@@ -155,7 +155,6 @@ line vty
   access-class {{ bse.mgmt_acl[1]['acl_name'] }} in
 
 {####### Other settings such as resourse, roles, CoPP, RMON and callhome #######}
-icam monitor scale
 copp profile strict
 no system mode maintenance
 vdc {{ inventory_hostname }} id 1
