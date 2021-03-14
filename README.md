@@ -427,7 +427,7 @@ Routes are added per-tenant with the tenant being the top-level dictionary that 
 - For routes with the same attributes (like next-hop) can group all the routes as a list within the one `prefix` dictionary key
 - Can optionally set next-hop interface, administrative distance and the next hop VRF (for route leaking between VRFs)
 
-| Parent dict  | Key           | Value      | Mandatory | Information |
+| Parent dict  | Key           | Value      | Mand | Information |
 |--------------|---------------|------------|------|-------------|
 | n/a | `tenant`       | list     | Yes | *List of tenants to create the routes in. Use 'global' for the global routing table*
 | n/a | `switch`       | list     | Yes | *List of switches to create all routes on (alternatively can be set per-route)*
@@ -459,7 +459,7 @@ An OSPF processes can be configured for any of the tenants or the global routing
 
 ***ospf.interface:***  Each list element is a group of interfaces with the same set of attributes (area number, interface type, auth, etc)
 
-| Key      | Value | Mandatory | Information |
+| Key      | Value&nbsp;&nbsp;&nbsp;&nbsp;&nbsp | Mandatory | Information |
 |----------|-------|-----------|-------------|
 | `name` | list | Yes | *List of one or more interfaces. Use interface full name (Ethernet) or Vlan*
 | `area` | x.x.x.x | Yes | *Area this group of interfaces are in, must be in dotted decimal format*
