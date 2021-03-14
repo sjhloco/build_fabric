@@ -1,4 +1,4 @@
-# Deploy Leaf and Spine
+# Declaratively deploy Leaf and Spine fabric
 
 This playbook will deploy a leaf and spine fabric and its related services in a declarative manner. You only have to define a few key values such as *naming convention*, *number of devices* and *addresses ranges*, the playbook is smart enough to do the rest for you.
 
