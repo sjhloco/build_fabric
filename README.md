@@ -28,7 +28,7 @@ This deployment will scale up to a maximum of 4 spines, 4 borders and 10 leafs. 
 | MLAG Peer-link  | *Eth1/5*   | *Eth1/6*
 | MLAG keepalive  | *mgmt*     | *n/a*
 
-![image](https://user-images.githubusercontent.com/33333983/111067948-82520c80-84be-11eb-987f-d9c6ced0ef1e.png)
+<div style="text-align:center">![image](https://user-images.githubusercontent.com/33333983/111067948-82520c80-84be-11eb-987f-d9c6ced0ef1e.png)</div>
 
 This playbook is based on 1U Nexus devices, therefore using the one linecard module for all the connections. I have not tested how it will work with multiple modules, the role *intf_cleanup* is likely not to work. This role ensures interface configuration is declarative by defaulting non-used interfaces, therefore could be excluded without breaking the playbook.
 
