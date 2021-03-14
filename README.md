@@ -260,7 +260,7 @@ Tenants, SVIs, VLANs and VXLANs are created based on the variables stored in the
 | `ipv4_bgp_redist` | True or False | No | *Dictates whether the SVI is redistributed into VRF BGP addr family (default True)*
 | `create_on_leaf` | True or False | No | *Dictates whether this VLAN is created on the leafs (default True)*
 | `create_on_border` | True or False | No | *Dictates whether this VLAN is created on the borders (default False)*
-| `vxlan` | True or False | No | *Whether VXLAN or normal VLAN. Only need if don't want it to be VXLAN (default True)*
+| `vxlan` | True or False | No | *Whether VXLAN or normal VLAN. Only need if don't want it to be a VXLAN*
 
 The redistribution route-map name can be changed in the advanced (*adv*) section of *services-tenant.yml* or *services-routing.yml*. If defined in both places the setting in *services-routing.yml* take precedence.
 
@@ -342,12 +342,12 @@ There are 7 pre-defined interface types that can be deployed:
 
 The ***intf.single_homed*** and ***intf.dual-homed*** dictionaries both hold a list of all single-homed or dual-homed interfaces using any of the attributes in the table below. If there are no single-homed or dual-homed interfaces on the fabric hash out the relevant dictionary.
 
-| Key        | Value   | Mandatory   | Information |
+| Key        | Value   | Mand  | Information |
 |------------|---------|-------------|-------------|
 | `descr` | string | Yes | *Interface or port-channel description*
 | `type` | intf_type | Yes | *Either access, stp_trunk, stp_trunk_non_ba, non_stp_trunk, layer3, loopback or svi*
 | `ip_vlan` | vlan or ip | Yes | *Depends on the type, either ip/prefix, vlan or multiple vlans separated by , and/or -*
-| `switch`  | list | Yes | *List of switches created on. If dual-homed needs to be the odd numbered switch from MLAG pair*
+| `switch`  | list | Yes | *List of switches created on. If dual-homed needs to be odd numbered switch from MLAG pair*
 | `tenant` | string | No | *Layer3, svi and loopbacks only. If not defined the default VRF is used (global routing table)*
 | `po_mbr_descr` | list | No | *PO member interface description, [odd_switch, even_switch]. If undefined uses PO descr*
 | `po_mode` | string | No | *Set the Port-channel mode, 'on', 'passive' or 'active' (default is 'active')*
