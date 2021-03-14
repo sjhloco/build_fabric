@@ -252,7 +252,7 @@ Tenants, SVIs, VLANs and VXLANs are created based on the variables stored in the
 - To add a non-VXLAN SVI (without anycast address) create the VLAN as normal but with the extra `VXLAN: False` dictionary. The SVI is defined in *service_interface.yml* as `type: svi`
 - Optional settings will implicitly use the default value, they only need defining if not using the default value
 
-| Key      | Value &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Mand | Information |
+| Key      | Value &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Mand | Information |
 |----------|-------|-----------|-------------|
 | `num` | integer | Yes | *The VLAN number*
 | `name` | string | Yes | *The VLAN name*
