@@ -17,7 +17,12 @@ The playbook (*PB_build_fabric.yml*) deployment is structured into the following
 
 If you wish to have a more custom build the majority of the settings in the variable files (unless specifically stated) can be changed as none of the scripting or templating logic uses the actual contents (dictionary values) to make decisions.
 
-This deployment will scale up to a maximum of 4 spines, 4 borders and 10 leafs. By default the following ports are used for inter-switch links, these can be changed within *fabric.yml* (*fbc.adv.bse_intf*).
+This deployment will scale up to a maximum of 4 spines, 4 borders and 10 leafs, this is how it will be deployed by default.
+<p align="center">
+    <img width="700" src="https://user-images.githubusercontent.com/33333983/111067948-82520c80-84be-11eb-987f-d9c6ced0ef1e.png">
+</p>
+
+The default ports used for inter-switch links are listed below, these can be changed within *fabric.yml* (*fbc.adv.bse_intf*).
 
 | Connection      | Start Port | End Port |
 |-----------------|------------|----------|
@@ -27,10 +32,6 @@ This deployment will scale up to a maximum of 4 spines, 4 borders and 10 leafs. 
 | BORDER-to-SPINE | *Eth1/1*   | *Eth1/4*
 | MLAG Peer-link  | *Eth1/5*   | *Eth1/6*
 | MLAG keepalive  | *mgmt*     | *n/a*
-
-<p align="center">
-    <img width="700" src="https://user-images.githubusercontent.com/33333983/111067948-82520c80-84be-11eb-987f-d9c6ced0ef1e.png">
-</p>
 
 This playbook is based on 1U Nexus devices, therefore using the one linecard module for all the connections. I have not tested how it will work with multiple modules, the role *intf_cleanup* is likely not to work. This role ensures interface configuration is declarative by defaulting non-used interfaces, therefore could be excluded without breaking the playbook.
 
