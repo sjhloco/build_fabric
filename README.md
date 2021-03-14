@@ -130,7 +130,7 @@ If the management interface is not being used for the keepalive link either spec
 
 ***route:*** Settings related to the fabric routing protocols (OSPF and BGP). BFD is not supported on unnumbered interfaces so the routing protocol timers have been shortened (OSPF 2/8, BGP 3/9), these are set under the advanced settings (`adv.route`)
 
-| Key            | Value                 | Mandatory | Information |
+| Key            | Value&nbsp;                 | Mandatory | Information |
 |----------------|-----------------------|-----------|-------------|
 | `ospf.pro`       | string or integer | Yes | *Can be numbered or named*
 | `ospf.area`      |  x.x.x.x              | Yes | *Area this group of interfaces are in, must be in dotted decimal format*
@@ -237,7 +237,7 @@ Tenants, SVIs, VLANs and VXLANs are created based on the variables stored in the
 - Even if a tenant is not a layer3 tenant a VRF will still be created and the L3VNI and tenant VLAN number reserved
 - If the tenant is a layer3 tenant the route-map for redistribution is always created and attached to the BGP peer
 
-| Key      | Value | Mandatory | Information |
+| Key      | Value&nbsp; | Mandatory | Information |
 |----------|-------|-----------|-------------|
 | `tenant_name` | string | Yes |  *Name of the VRF* |
 | `l3_tenant` | True or False | Yes |  *Does it need SVIs or is routing done off the fabric (i.e external router)* |
@@ -252,7 +252,7 @@ Tenants, SVIs, VLANs and VXLANs are created based on the variables stored in the
 - To add a non-VXLAN SVI (without anycast address) create the VLAN as normal but with the extra `VXLAN: False` dictionary. The SVI is defined in *service_interface.yml* as `type: svi`
 - Optional settings will implicitly use the default value, they only need defining if not using the default value
 
-| Key      | Value&nbsp-s | Mand | Information |
+| Key      | Value&nbsp; | Mand | Information |
 |----------|-------|-----------|-------------|
 | `num` | integer | Yes | *The VLAN number*
 | `name` | string | Yes | *The VLAN name*
