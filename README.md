@@ -463,7 +463,7 @@ An OSPF processes can be configured for any of the tenants or the global routing
 |----------|-------|-----------|-------------|
 | `name` | list | Yes | *List of one or more interfaces. Use interface full name (Ethernet) or Vlan*
 | `area` | x.x.x.x | Yes | *Area this group of interfaces are in, must be in dotted decimal format*
-| `switch` | list | No | *On which switches to enable OSPF on these interfaces (inherits process.switch if not set)*
+| `switch` | list | No | *Which switches to enable OSPF on these interfaces (inherits process.switch if not set)*
 | `cost` | integer | No | *Statically set the interfaces OSPF cost, can be 1-65535*
 | `authentication` | string | No | *Enable authentication for the area and a password (Cisco type 7) for this interface*
 | `area_type` | string | No | *By default is normal. Can be set to stub, nssa, stub/nssa no-summary, nssa default-information-originate or nssa no-redistribution*
@@ -482,12 +482,12 @@ An OSPF processes can be configured for any of the tenants or the global routing
 
 ***ospf.redist:***: Each list element is the redistribution type (*ospf_xx*, *bgp_xx*, *static* or *connected*). Redistributed prefixes can be filtered (*allow*) or weighted (*metric*) with the route-map order being metric and then allow. If the allow list is not set it will allow any (empty route-map)
 
-| Key      | Value | Mandatory | Information |
+| Key      | Value&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Mand | Information |
 |----------|-------|-----------|-------------|
 | `type` | string | Yes | *Redistribute either OSPF process, BGP AS (whitespace before process or AS), static or connected*
 | `switch` | list | No | *What switches to redistribute on, inherits process.switch if not set*
 | `metric` | dict | No | *Add metric to redistributed prefixes. Keys are metric value and values a list of prefixes or keyword ('any' or 'default'). Can't use metric with a type of connected*
-| `allow` | list,any,default | No | *List of prefixes (connected is list of interfaces) or keyword ('any' or 'default') to redistribute*
+| `allow` | list, any, default | No | *List of prefixes (connected is list of interfaces) or keyword ('any' or 'default') to redistribute*
 
 ### BGP
 
