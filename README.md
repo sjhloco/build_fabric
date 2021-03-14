@@ -4,9 +4,9 @@ This playbook will deploy a leaf and spine fabric and its related services in a 
 
 This all came about from my project for the IPSpace automation course and was used in part for the initial setup N9K DC setup. This is designed to be run on the N9Kv, to run it declaratively on physical devices you will need a few minor tweaks to *bse_tmpl.j2* file as different hardware can have slightly different base commands.
 
-I am done with building DCs and with my programing knowledge is probably the limit I can take this so dont envisage any future chanegs to this. This README just gives the important information, is more examples in the variable files and I tried to explain it in more detail in my [blog](https://theworldsgonemad.net/2021/automate-dc-pt1)
+I am done with building DCs and with my programing knowledge it is probably at the limit I can take this so don't envisage maling any future changes. This README just gives the important information, are more examples in the variable files and I tried to explain it in more depth in a series on posts on my [blog](https://theworldsgonemad.net/2021/automate-dc-pt1)
 
-It playbook (*PB_build_fabric.yml*) deployment is structured into the following 5 roles giving you the option to deploy part or all of the fabric using playbook tags.
+The playbook (*PB_build_fabric.yml*) deployment is structured into the following 5 roles giving you the option to deploy part or all of the fabric using playbook tags.
 
 - base: Non-fabric specific core configuration such as hostname, address ranges, users, acls, ntp, etc
 - fabric: Fabric specific elements such as fabric size, interfaces (spine-to->leaf/border), OSPF, BGP and MLAG
@@ -28,8 +28,7 @@ This deployment will scale up to a maximum of 4 spines, 4 borders and 10 leafs. 
 | MLAG Peer-link  | *Eth1/5*   | *Eth1/6*
 | MLAG keepalive  | *mgmt*     | *n/a*
 
-!!!!!!! REDO IMAGE, maybe not use VISIO, NEEDS TO LOOK MORE FRIENDLY !!!!!!!!!
-![image](https://user-images.githubusercontent.com/33333983/83332342-9b246500-a292-11ea-9455-7cbe56e0d701.png)
+[image](https://user-images.githubusercontent.com/33333983/111067948-82520c80-84be-11eb-987f-d9c6ced0ef1e.png)
 
 This playbook is based on 1U Nexus devices, therefore using the one linecard module for all the connections. I have not tested how it will work with multiple modules, the role *intf_cleanup* is likely not to work. This role ensures interface configuration is declarative by defaulting non-used interfaces, therefore could be excluded without breaking the playbook.
 
@@ -638,12 +637,13 @@ The directory structure is created by default within *~/device_configs* to hold 
 
 ## Installation and Prerequisites
 
-The deployment has been tested on `NXOS 9.3(5)` using `ansible 2.10.6` and `Python 3.7.10`. Clone the repository, create a virtual environment and install the python packages (ansible, napalm-ansible & PyYAML). Once installed run `napalm-ansible` to get the location of the napalm-ansible paths and add these to *ansible.cfg* under *[defaults]*.
+The deployment has been tested on `NXOS 9.3(5)` using `ansible 2.10.6` and `Python 3.7.6`. Clone the repository, create a virtual environment and install the python packages (ansible, napalm-ansible & PyYAML). Once installed run `napalm-ansible` to get the location of the napalm-ansible paths and add these to *ansible.cfg* under *[defaults]*.
 
 ```none
 git clone https://github.com/sjhloco/build_fabric.git
-python3.7 -m venv ~/virt/venv_ansible2.10
-source ~/virt/venv_ansible2.10/bin/activate
+mkdir ~/venv/venv_ansible2.10
+python3 -m venv ~/venv/venv_ansible2.10
+source ~/venv/venv_ansible2.10/bin/activate
 pip install -r build_fabric/requirements.txt
 ```
 
@@ -660,7 +660,7 @@ vrf context management
   ip route 0.0.0.0/0 10.10.108.1
 feature nxapi
 feature scp-server
-boot nxos bootflash:/nxos.9.3.5.bin
+boot nxos bootflash:/nxos.9.3.5.bin sup-1
 ```
 
 - Leaf and border switches also need the TCAM allocation changed to allow for arp-suppression. This can differ dependant on device model, any changes made need correcting in `/roles/base/templates/nxos/bse_tmpl.j2` to keep it idempotent.
@@ -680,10 +680,6 @@ Before the playbook can be run the devices SSH keys need adding on the Ansible h
 sudo apt install ssh-keyscan
 ansible-playbook ssh_keys/ssh_key_add.yml -i ssh_keys/ssh_hosts
 ```
-
-
-
-
 ## Running playbook
 
 The device configuration is applied using Napalm with the differences always saved to file (in */device_configs/diff*) and optionally printed to screen. Napalm *commit_changes* is set to true meaning that Ansible *check-mode* is used for dry-runs. It can take 3 to 4 minutes to deploy full configuration when including the service roles so the Napalm default timeout has been increased to 240 seconds.
@@ -713,7 +709,7 @@ Due to the declarative nature of the playbook and the inheritance between roles 
 ***Apply the config:*** Replaces current config on the device. The output is by default automatically saved */device_configs/diff*
 {{< cfg_syntax"ansible-playbook PB_build_fabric.yml -i inv_from_vars_cfg.yml --tag [full]">}}
 
-All roles can be deployed individually on there own to just to create the config snippet files, oo connections are made to devices or changes applied
+All roles can be deployed individually to just to create the config snippet files, so connections are made to devices or changes applied. The `merge` tag can be used with these to Napalm without `replace_config` allowing any combination of these roles to be run non-declaratively. As the L3VNIs and interfaces are generated automatically the variable files still need at current tenants and interfaces as well as the advanced sections.
 
 | tag        | Description |
 |------------|-------------|
@@ -722,9 +718,13 @@ All roles can be deployed individually on there own to just to create the config
 | `tnt`      | Generates the tenant configuration snippet saved to *device_name/config/svc_tnt.conf*
 | `intf`     | Generates the interface configuration snippet saved to *device_name/config/svc_intf.conf*
 | `rte`      | Generates the route configuration snippet saved to *device_name/config/svc_rte.conf*
+| `merge`    | Napalm merges new and current config, must be run with other role tag or tags
 
 ***Generate the fabric config:*** Creates the fabric and interface cleanup config snippets and saves them to *fabric.conf* and *dflt_intf.conf*
 {{< cfg_syntax"ansible-playbook PB_build_fabric.yml -i inv_from_vars_cfg.yml --tag [fbc]">}}
+
+***Apply tenants and interfaces non-declaratively:*** Adds additional tenant and routing objects by merging with the current config
+{{< cfg_syntax"ansible-playbook PB_build_fabric.yml -i inv_from_vars_cfg.yml --tag [tnt,rte,merge,diff]">}}
 
 ## Post Validation checks
 
@@ -826,7 +826,13 @@ Process for building a new service:
 
 ## Caveats
 
-I run N9K on EVE-NG and have had mixed results with the N9Ks. At one time had 12 devices running 9.2.4 and it was pretty stable. The only issue I had pushing changes was that the NXOS API would stop responding at times. In NXOS it said the API process was up and listening but if you telnet to it port 443 is not listening. To fix this you had disable and re-enable the feature nxapi. Removing the command 'nxapi use-vrf management' helped make this more stable.
+I run N9K on EVE-NG and have had mixed results with the N9Ks.
+
+9.2.4 seemd stable without the moduel issues, but API calls very slow so timeout (even though applied
+9.3.5 lot faster for API calls)
+
+
+At one time had 12 devices running 9.2.4 and it was pretty stable. The only issue I had pushing changes was that the NXOS API would stop responding at times. In NXOS it said the API process was up and listening but if you telnet to it port 443 is not listening. To fix this you had disable and re-enable the feature nxapi. Removing the command 'nxapi use-vrf management' helped make this more stable.
 
 I tried using 9.3.5 and 9.3.6 but when you get past 5 devices seems to be unstable and cant find a reason why. From 9.3 the interfaces are now on a seperate module, for some reason either that will fail at startup or after a certain amount of time.
 

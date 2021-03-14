@@ -3,13 +3,6 @@
 
 - name: "Deploy Leaf and Spine DC"
   hosts: all
-  # hosts: DC1-N9K-LEAF01:DC1-N9K-BORDER01
-  # hosts: DC1-N9K-SPINE01:DC1-N9K-SPINE02
-  # hosts: DC1-N9K-LEAF01:DC1-N9K-LEAF02
-  # hosts: DC1-N9K-BORDER01:DC1-N9K-BORDER02
-  # hosts: DC1-N9K-SPINE01
-  # hosts: DC1-N9K-LEAF01:DC1-N9K-LEAF02
-  # hosts: DC1-N9K-BGW02:DC1-N9K-BGW01
   connection: local
   vars_files:
     - vars/ansible.yml                # All variables start with ans
@@ -104,13 +97,11 @@
         name: services
         tasks_from: svc_tnt
       tags: [tnt, bse_fbc_tnt, bse_fbc_tnt_intf, full]
-
     - name: Builds the interface config snippets
       import_role:
         name: services
         tasks_from: svc_intf
       tags: [intf, bse_fbc_tnt_intf, full]
-
     - name: Builds the tenant routing config snippets
       import_role:
         name: services
@@ -131,15 +122,15 @@
         regexp: '\.conf$'           # Ensures only joins the files created by the roles
       changed_when: False           # Stops it reporting changes in playbook summary
       check_mode: False             # These tasks still make changes when in check mode
-      tags: [bse_fbc, bse_fbc_tnt, bse_fbc_tnt_intf, full]
+      tags: [bse_fbc, bse_fbc_tnt, bse_fbc_tnt_intf, full, merge]
 
   # 3b. Replace the configuration on the devices with the config in the assembled config file
     - name: "CFG >> Applying changes using replace config"
       napalm_install_config:
         provider: "{{ ans.creds_all }}"
         dev_os: "{{ ansible_network_os }}"
-        # NXOS takes between 70 to 100 seconds to deploy all changes so default timeout needed increasing
-        timeout: 120
+        # NXOS takes between 3 to 4 minutes to deploy all changes so default timeout needed increasing
+        timeout: 300
         config_file: "{{ ans.dir_path }}/{{ inventory_hostname }}/config/config.cfg"
         commit_changes: True            # Set to true as use Ansible check_mode to do dry runs
         replace_config: True            # Replacing config rather than merging
@@ -161,7 +152,7 @@
         napalm_install_config:
           provider: "{{ ans.creds_all }}"
           dev_os: "{{ ansible_network_os }}"
-          timeout: 120                    # Needed as with default 60 will timeout before full rollback complete
+          timeout: 300                    # Needed as with default 60 will timeout before full rollback complete
           config_file: "{{ ans.dir_path }}/{{ inventory_hostname }}/config/rollback_config.txt"
           commit_changes: True            # Set to true as use Ansible check_mode to do dry runs
           replace_config: True            # Replacing config rather than merging
@@ -170,20 +161,19 @@
         register: changes
       tags: [rb]
 
-  # 3d. Print the configuration to screen
-    - debug: var=changes.msg.splitlines()
-      tags: [diff]
-
-  # 4. Merge the configuration on the devices with the config in the assembled config file
+  # 3d. Merge the configuration on the devices with the config in the assembled config file
     - name: "CFG >> Merging changes with current config"
       napalm_install_config:
         provider: "{{ ans.creds_all }}"
         dev_os: "{{ ansible_network_os }}"
-        # NXOS takes between 70 to 100 seconds to deploy all changes so default timeout needed increasing
-        timeout: 120
+        timeout: 60
         config_file: "{{ ans.dir_path }}/{{ inventory_hostname }}/config/config.cfg"
         commit_changes: True            # Set to true as use Ansible check_mode to do dry runs
         diff_file: "{{ ans.dir_path }}/diff/{{ inventory_hostname }}.txt"
         get_diffs: True                 # All diffs re save to file, can user with check-mode to see expected
       register: changes
       tags: [merge]
+
+  # 3e. Print the configuration to screen
+    - debug: var=changes.msg.splitlines()
+      tags: [diff]

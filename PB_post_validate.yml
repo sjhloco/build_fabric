@@ -1,6 +1,5 @@
 ---
 # This playbook is used to to validate the deployed leaf and spine fabric
-
 - name: "validate Leaf and Spine DC"
   hosts: all
 

@@ -56,5 +56,3 @@
           validate_result: "{{ cmds | val_builder(lookup('file','files/file_input.json'), ansible_run_tags) }}"
       - debug: var=validate_result
       tags: [rpt_file]
-
-

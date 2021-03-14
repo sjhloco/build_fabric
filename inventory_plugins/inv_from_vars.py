@@ -327,9 +327,6 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
         self.create_inventory()
 
 
-
-
-
    # Example ways to test variable format is correct before running other methods
         # test = self.addr['lp_net']
         # test = config.get('device_name')[0]['spine']

@@ -261,7 +261,6 @@ class FilterModule(object):
             except IndexError:
                 errors.append(error_message)
 
-
     # EXIST: Asserts that the dictionary exists
     def assert_exist(self, errors, my_list, dict_key, error_message):
         try:
@@ -962,6 +961,7 @@ class FilterModule(object):
                     for key, value in d.items():
                         per_dev_tnt_intf[sw][key].extend(value)
 
+
 ################ BGP variables ################
         # MAND_ONLY: Makes sure that mandatory dicts are only in group or only in peer, if not exits the scripts
         mand_bgp_err = []
@@ -1284,7 +1284,6 @@ class FilterModule(object):
       # FUNCTION_ADV_PFX: Function validates all elements of the various methods used to advertise prefixes into the routing protocol (network (bgp only), summary and redistribution)
         def adv_pfx_checks(opt, adv_type, adv_value, tnt_name, summary, error, err_msg):
             # 1. LP: Within each advertisment type (network, summary, redist), loop through each indivdual advertisment
-            # print(opt)
             for each_type in opt[adv_type]:
                 try:
                     # 2. ALL_MAND_EXIST (svc_rte.ospf/bgp.tenant.network/summary/redist.prefix/type): If prefix/type doesnt exists must failfast for that type (uses separate error_var) as other checks rely on it

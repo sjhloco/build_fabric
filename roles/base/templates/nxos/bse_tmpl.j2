@@ -155,6 +155,7 @@ line vty
   access-class {{ bse.mgmt_acl[1]['acl_name'] }} in
 
 {####### Other settings such as resourse, roles, CoPP, RMON and callhome #######}
+icam monitor scale
 copp profile strict
 no system mode maintenance
 vdc {{ inventory_hostname }} id 1

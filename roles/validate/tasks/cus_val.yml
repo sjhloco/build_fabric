@@ -81,7 +81,3 @@
     set_fact:
       validate_result: "{{ cmds | custom_validate(output.results, ans.dir_path, inventory_hostname, ansible_network_os) }}"
   tags: [bse_fbc, bse_fbc_tnt, bse_fbc_tnt_intf, full]
-  # tags: testing
-
-
-

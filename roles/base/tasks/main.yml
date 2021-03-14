@@ -1,6 +1,5 @@
 ---
 ### Uses template to build the base configuration (mainly non-fabric) using mostly the variables from base.yml) ###
-
 - name: "Getting tenant interface list"
   block:
   - name: "SYS >> Getting list of tenant interfaces"

@@ -23,7 +23,6 @@ route-map {{ rm[0] }} {{ rm[2] }} {{ rm[1] }}
   set as-path prepend {{ rm[4][1] * ((fbc.route.bgp.as_num | string) + ' ') }}
 {% endif %}{% endfor %}
 
-
 {######### Create the static routes ########}
 {## Macro for static-route, with and without destination VRF (route-leaking) ##}
 {%- macro macro_static_route(route) -%}
@@ -42,7 +41,6 @@ ip route {{ each_pfx }} {{ each_rte.interface }} {{ each_rte.gateway }} {{ each_
 vrf context {{ vrf }}
 {{ macro_static_route(route) | indent(width=2, first=True) }}
 {% endif %}{% endfor %}
-
 
 {######### Create the OSPF process ########}
 {% for ospf_proc, ospf_cfg in flt_svc_rte[3].items() %}
@@ -94,7 +92,6 @@ interface {{ intf }}
 {% endif %}
   ip router ospf {{ ospf_cfg.proc }} area {{ ospf_cfg.area }}
 {% endfor %}
-
 
 {######### Create the BGP Configuration  ########}
 {## Macro for peers so can change indentation for global routing table or a VRF ##}

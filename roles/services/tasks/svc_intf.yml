@@ -1,6 +1,5 @@
 ---
 ### Uses template to build the interface config from service_interface.yml. Defines the port type (L3, trunk, access, etc) and port-channel###
-
 - name: "Create the interface configuration snippets"
   block:
     - name: "SYS >> Creating per-device service_interface data-models"

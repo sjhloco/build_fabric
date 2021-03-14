@@ -32,7 +32,7 @@ class FilterModule(object):
             for vl in tnt['vlans']:
                 # Creates a L2VNI by adding vlan num to base VNI
                 vl['vni'] = l2vni + vl['num']
-                # Creates seperate lists of VLANs on leafs and borders. 'setdefault' adds a dictionary for the default values
+                # Creates separate lists of VLANs on leafs and borders. 'setdefault' adds a dictionary for the default values
                 if vl.setdefault('create_on_border', False) == True:
                     border_vlans.append(vl)
                 if vl.setdefault('create_on_leaf', True) == True:
@@ -41,7 +41,7 @@ class FilterModule(object):
                 # Adds dictionaries with default value for ip_addr and vxlan if not present
                 vl.setdefault('ip_addr', None)
                 vl.setdefault('vxlan', True)
-                # If the IP addesss is 'None' makes sure that 'ipv4_bgp_redist: False'
+                # If the IP address is 'None' makes sure that 'ipv4_bgp_redist: False'
                 if vl['ip_addr'] == None:
                     vl['ipv4_bgp_redist'] = False
                 # If the VLAN has an IP addr adds dict 'ipv4_bgp_redist: True' (the default) adds 'True' to 'tnt_redist'
@@ -90,7 +90,6 @@ class FilterModule(object):
 
 
 ################################################## DRY Functions used by INTF DATA-MODEL ##################################################
-
     #VLAN SEQ: Used by 'svc_intf_dm' method to change sequential vlans so are separated by '-' as per "trunk allowed vlans" config syntax
     def vlan_seq(self, vlans):
         # 1. Creates a list of all vlans, doesn't matter if int, or str spilt by ',' or '-'
@@ -126,7 +125,6 @@ class FilterModule(object):
 
 ###################################### INTF DATA-MODEL: Uses input from service_interface.yml ######################################
 # Creates a per-device data model of all interfaces to be configured on that device
-
     def svc_intf_dm(self, all_homed, hostname, intf_adv, bse_intf):
         sl_hmd = intf_adv['single_homed']
         dl_hmd = intf_adv['dual_homed']
@@ -281,7 +279,6 @@ class FilterModule(object):
 
 
 ################################################## DRY Functions used by RTR DATA-MODEL ##################################################
-
 # BGP_ATTR: Function to create the prefix-list and route-map data-models for BGP attribute associated prefixes (weight, local pref, med & AS-path)
     def create_bgpattr_rm_pfx_lst(self, input_data, direction, bgp_attr, pl_name, rm_name):
         # If a BGP attribute is defined in the dictionary for that direction (inbound or outbound) the input_data is processed by this method
@@ -440,7 +437,6 @@ class FilterModule(object):
 
 ###################################### RTR DATA MODEL: Uses input from service_route.yml ######################################
 # Creates 7 data models for Prefix-lists, Route-maps, BGP groups, BGP peers (includes network, summary, redist), OSPF processes, OSPF interfaces and static routes
-
     def svc_rte_dm(self, hostname, bgp_grps, bgp_tnt_adv, ospf, static_route, adv, fbc):
         pl_rm_name = adv['bgp_naming']
         bse_intf = fbc['adv']['bse_intf']
@@ -469,7 +465,7 @@ class FilterModule(object):
                 if len(rte_tmp) != 0:
                     stc_rte[tnt].extend(rte_tmp)
 
-        # 6. CLEANUP: Deletes switch (couldn.t do in last loop if route used by multiple tenants) and swap short intf name for full intf name
+        # 6. CLEANUP: Deletes switch (couldn't do in last loop if route used by multiple tenants) and swap short intf name for full intf name
         for route in stc_rte.values():
             for each_route in route:
                 each_route.pop('switch', None)

@@ -1,6 +1,5 @@
 ---
 ### Uses template to build the tenant router configuration, so defines BGP and OSPF using variables from service_route.yml ####
-
 - name: "Create the routing configuration snippets"
   block:
     - name: "SYS >> Creating per-device service_route data-models"

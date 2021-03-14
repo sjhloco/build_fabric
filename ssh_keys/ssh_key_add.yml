@@ -1,6 +1,5 @@
 ---
-# Collects SSH keys from all hosts and adds to know_hosts file so dont have to accept fingerprint
-
+# Collects SSH keys from all hosts and adds to know_hosts file so don't have to accept fingerprint
 - name: Collect and add all SSH keys to known_hosts
   hosts: all
   connection: local
@@ -15,13 +14,12 @@
         that: host_keys.stdout
         msg:  "We did not get SSH key for {{ inventory_hostname }}"
 
-    # SSH keys are added tothe file surronded by the text from marker
+    # SSH keys are added to the file surrounded by the text from marker
     - blockinfile:
         dest: "~/.ssh/known_hosts"
         marker: "##### {mark} This part managed by Ansible #####"
-        # Has to be inline jinja rather than template as blockinfile doenst support templates
+        # Has to be inline jinja rather than template as block in file doesn't support templates
         block: |
           {% for h in groups['all'] if hostvars[h].host_keys is defined and hostvars[h].host_keys.stdout is defined %}
           {{ hostvars[h].host_keys.stdout }}
           {% endfor %}
-      # delegate_to: localhost

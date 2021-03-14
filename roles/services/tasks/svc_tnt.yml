@@ -1,6 +1,5 @@
 ---
 ### Uses template to build the tenant configuration, so VRFs, SVIs, VXLANs and VLANs using variables from service_tenant.yml ###
-
 - name: "Create the tenant configuration snippets"
   block:
     - name: "TNT >> Creating per-device type service_tenant data-models"
