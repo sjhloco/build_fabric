@@ -484,7 +484,7 @@ An OSPF processes can be configured for any of the tenants or the global routing
 
 | Key      | Value&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Mand | Information |
 |----------|-------|-----------|-------------|
-| `type` | string | Yes | *Redistribute either OSPF process, BGP AS (whitespace before process or AS), static or connected*
+| `type` | string | Yes | *Redistribute either OSPF process, BGP AS, static or connected*
 | `switch` | list | No | *What switches to redistribute on, inherits process.switch if not set*
 | `metric` | dict | No | *Add metric to redistributed prefixes. Keys are metric value and values a list of prefixes or keyword ('any' or 'default'). Can't use metric with a type of connected*
 | `allow` | list, any, default | No | *List of prefixes (connected is list of interfaces) or keyword ('any' or 'default') to redistribute*
@@ -594,14 +594,14 @@ The main playbook (***PB_build_fabric.yml***) is divided into 3 sections with ro
 - **tasks:** Imports tasks from roles which in turn use variables (*.yml*) and templates (*.j2*) to create the config snippets
   - ***base:*** From *base.yml* and *bse_tmpl.j2* creates the base configuration snippet (aaa, logging, mgmt, ntp, etc)
   - ***fabric:*** From *fabric.yml* and *fbc_tmpl.j2* creates the fabric configuration snippet (interfaces, OSPF, BGP)
-  - ***services:*** Per-service-type *tasks*, templates and plugins (create data models) to create the config for services that run on the fabric
+  - ***services:*** Per-service-type *tasks*, templates and plugins to create the config for services that run on the fabric
     - ***svc_tnt:*** From *services_tenant.yml* and *svc_tnt_tmpl.j2* creates the tenant config snippet (VRF, SVI, VXLAN, VLAN)
     - ***svc_intf:*** From *services_interface.yml* and *svc_intf_tmpl.j2* creates interface config snippet (routed, access, trunk, loop)
     - ***svc_rte:*** From *service_route.yml* and *svc_rte_tmpl.j2* creates the tenant routing config snippet (BGP, OSPF, routes, redist)
   - ***intf_cleanup:*** Based on the interfaces used in the fabric creates config snippet to default all the other interfaces
 - **task_config:** Assembles the config snippets into the one file and applies using Napalm replace_config
 
-The post-validation playbook (***PB_post_validate.yml****) uses the validation role to do the majority of the work
+The post-validation playbook (***PB_post_validate.yml***) uses the validation role to do the majority of the work
 
 - **pre_tasks:** Creates the file structure to store validation files (*desired_state*) and the compliance report
 - **roles:** Imports the *services* role so that the filter plugins within it can be used to create the service data models for validation
@@ -638,7 +638,7 @@ The base location for this directory can be changed using the `ans.dir_path` var
 
 ## Prerequisites
 
-The deployment has been tested on `NXOS 9.3(5)` using `ansible 2.10.6` and `Python 3.6.9`. To set up the environment follow the below steps, once all packages are installed run `napalm-ansible` to get the location of the *napalm-ansible* paths and add these to *ansible.cfg* under *[defaults]*.
+The deployment has been tested on `NXOS 9.3(5)` using `ansible 2.10.6` and `Python 3.6.9`. To set up the environment follow the below steps, once all packages are installed run `napalm-ansible` to get the *napalm-ansible* paths and add these to *ansible.cfg* under *[defaults]*.
 
 ```bash
 git clone https://github.com/sjhloco/build_fabric.git
@@ -808,17 +808,17 @@ Post-validation is hierarchial as the addition of elements in the later roles ef
 
 ## Caveats
 
-When staring this project I used N9Kvs on EVE-NG and later on then moved onto physical devices when we were deploying the data centers. vPC fabric peering does not work on the virtual devices so this was never added as an option in the playbook.
+When staring this project I used N9Kv on EVE-NG and later moved onto physical devices when we were deploying the data centers. vPC fabric peering does not work on the virtual devices so this was never added as an option in the playbook.
 
-As deployments are declarative and there are differences with physical devices you will need a few minor tweaks to the *bse_tmpl.j2* template as different hardware can have slightly different base commands. The `system nve infra-vlans` command is required for infrastructure VLANs (OSPF over vPC peer link VLAN) and to run VLXAN over a VLAN but is not supported on N9Kv. For physical devices this line needs unhashing at the starte of *bse_tmpl.j2*.
+As deployments are declarative and there are differences with physical devices you will need a few minor tweaks to the *bse_tmpl.j2* template as different hardware can have slightly different hidden base commands. The `system nve infra-vlans` command is required for infrastructure VLANs (OSPF over vPC peer link VLAN) and to run VLXAN over a VLAN but is not supported on N9Kv. For physical devices this line needs unhashing at the start of *bse_tmpl.j2* template.
 
 ```jinja
 {# system nve infra-vlans {{ fbc.adv.mlag.peer_vlan }} #}
 ```
 
-EVE-NG is not perfect for running N9Ks. I originally started on `9.2.4` and although it is fairly stable in terms of features and uptime, the API can be very slow at times and take upto 10 minuets ot deploy. Sometimes after a deployment the API would stop responding (couldn`t telnet on 443) but NXOS said it was listening. To fix this you had disable and re-enable the feature nxapi. Removing the command 'nxapi use-vrf management' helps to make this more stable.
+Although they work on EVE-NG it is not perfect for running N9Kv. I originally started on `nxos.9.2.4` and although it is fairly stable in terms of features and uptime, the API can be very slow at times taking upto 10 minuets to deploy a device config. Sometimes after a deployment the API would stop responding (couldn't telnet on 443) but NXOS CLI said it was listening. To fix this you have disable and re-enable the *nxapi* feature. Removing the command 'nxapi use-vrf management' seems to help to make the API more stable.
 
-I next moved to NXOS `9.3.5` and although the API is consitantly more stable and faster, it has a strange issue around the interface module. When the N9Kv went to 9.3 the interfaces where moved to a separate module, module 1.
+I moved onto to NXOS `nxos.9.3.5` and although the API is faster and has more stablbility, there is a different issue around the interface module. When the N9Kv went to 9.3 the interfaces where moved to a separate module, module 1.
 
 ```none
 Mod Ports             Module-Type                      Model           Status
@@ -827,7 +827,7 @@ Mod Ports             Module-Type                      Model           Status
 27   0    Virtual Supervisor Module             N9K-vSUP              active *
 ```
 
-Once I get past five NXOS devices the interfaces module becomes unstable on the new devices, either randomly working or not workign at all. It will kick up an error on the CLI and go into a *pwr-cycld* state.
+Once I get past five NXOS devices the interfaces module becomes unstable on the new devices, either randomly crashing or going into the *pwr-cycld* state at startup after the inital bootup tests.
 
 ```none
 Mod Ports             Module-Type                      Model           Status
@@ -840,4 +840,4 @@ Mod  Power-Status  Reason
 1    pwr-cycld      Unknown. Issue show system reset mod ...
 ```
 
-Was not able to find a reason for it, it doesnt seem to be related to resources for either the virtual device or the EVE-NG box.
+I have not been able to find a reason for this, it doesnt seem to be related to resources for either the virtual device or the EVE-NG box.
