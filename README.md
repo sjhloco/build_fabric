@@ -482,7 +482,7 @@ An OSPF processes can be configured for any of the tenants or the global routing
 
 ***ospf.redist:***: Each list element is the redistribution type (*ospf_xx*, *bgp_xx*, *static* or *connected*). Redistributed prefixes can be filtered (*allow*) or weighted (*metric*) with the route-map order being metric and then allow. If the allow list is not set it will allow any (empty route-map)
 
-| Key      | Value&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Mand | Information |
+| Key      | Value&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Mand | Information |
 |----------|-------|-----------|-------------|
 | `type` | string | Yes | *Redistribute either OSPF process, BGP AS (whitespace before process or AS), static or connected*
 | `switch` | list | No | *What switches to redistribute on, inherits process.switch if not set*
