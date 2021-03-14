@@ -459,7 +459,7 @@ An OSPF processes can be configured for any of the tenants or the global routing
 
 ***ospf.interface:***  Each list element is a group of interfaces with the same set of attributes (area number, interface type, auth, etc)
 
-| Key      | Value&nbsp;&nbsp; | Mandatory | Information |
+| Key      | Value&nbsp;&nbsp;&nbsp;&nbsp; | Mandatory | Information |
 |----------|-------|-----------|-------------|
 | `name` | list | Yes | *List of one or more interfaces. Use interface full name (Ethernet) or Vlan*
 | `area` | x.x.x.x | Yes | *Area this group of interfaces are in, must be in dotted decimal format*
