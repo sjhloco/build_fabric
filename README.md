@@ -2,13 +2,13 @@
 
 This playbook will deploy a leaf and spine fabric and its related services in a declarative manner. You only have to define a few key values such as *naming convention*, *number of devices* and *addresses ranges*, the playbook is smart enough to do the rest for you.
 
-This all came about from my project for the [IPSpace Building Network Automation Solutions course](https://www.ipspace.net/Building_Network_Automation_Solutions), it probably wasn't the smartest idea to attempt something so complicated. It iss designed to be used on Cisco Nexus 9000 devices and was used in part when we were deploying new leaf and spine fabrics in our Data Centers. When deploying declaratively on physical devices a few minor tweaks will be needed to the *bse_tmpl.j2* template as different hardware can have slightly different base commands. The playbook is structured in a way that it should hopefully not be too difficult to add templates to deploy for other vendors.
+This came from my project for the [IPSpace Building Network Automation Solutions](https://www.ipspace.net/Building_Network_Automation_Solutions) course and was used in part when we were deploying Cisco 9k leaf and spine fabrics in our Data Centers. The playbook is structured in a way that it should hopefully not be too difficult to add templates to deploy leaf and spine fabrics for other vendors. My plan was to add Arista and Juniper but is unlikely to happen.
 
-I now am done with building DCs (bring on the :cloud:) and with this being past the limit of my programing knowledge I don't envisage making any future changes. This README is intended to give enough information to understand the playbooks structure and run it. The variable files hold examples of a deployment with more information on what each variable does. For more detailed information about the playbook have a look at the series off posts I did about it on my [blog](https://theworldsgonemad.net/2021/automate-dc-pt1).
+I now am done with building DCs (bring on the :cloud:) and with this being on the edge of the limit of my programing knowledge I don't envisage making any future changes. This README is intended to give enough information to understand the playbooks structure and run it. The variable files hold examples of a deployment with more information on what each variable does. For more detailed information about the playbook have a look at the series off posts I did about it on my [blog](https://theworldsgonemad.net/2021/automate-dc-pt1).
 
 <hr>
 
-The playbook (*PB_build_fabric.yml*) deployment is structured into the following 5 roles giving the option to deploy part or all of the fabric using tags.
+The playbook deployment is structured into the following 5 roles with the option to deploy part or all of the fabric.
 
 - **base:** Non-fabric specific core configuration such as hostname, address ranges, aaa, users, acls, ntp, syslog, etc
 - **fabric:** Fabric specific core elements such as fabric size, interfaces (spine-to->leaf/border), routing protocols (OSPF, BGP) and MLAG
@@ -252,7 +252,7 @@ Tenants, SVIs, VLANs and VXLANs are created based on the variables stored in the
 - To add a non-VXLAN SVI (without anycast address) create the VLAN as normal but with the extra `VXLAN: False` dictionary. The SVI is defined in *service_interface.yml* as `type: svi`
 - Optional settings will implicitly use the default value, they only need defining if not using the default value
 
-| Key      | Value | Mandatory | Information |
+| Key      | Value&nbsp-s | Mand | Information |
 |----------|-------|-----------|-------------|
 | `num` | integer | Yes | *The VLAN number*
 | `name` | string | Yes | *The VLAN name*
