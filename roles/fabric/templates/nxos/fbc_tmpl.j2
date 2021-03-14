@@ -129,6 +129,9 @@ router bgp {{ fbc.route.bgp.as_num }}
     remote-as {{ fbc.route.bgp.as_num }}
     update-source {{ intf_lp[0]['name'] }}
     timers {{ fbc.adv.route.bgp_timers[0] }} {{ fbc.adv.route.bgp_timers[1] }}
+{% if fbc.route.authentication is defined %}
+    password {{ fbc.route.authentication }}
+{% endif %}
     address-family l2vpn evpn
       send-community
       send-community extended
