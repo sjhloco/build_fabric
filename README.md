@@ -43,15 +43,15 @@ These core elements are the minimum requirements to create the declarative fabri
 
 ### ansible.yml (ans)
 
-- ***dir_path:*** Base directory location on the Ansible host that stores all the validation and configuration snippets
-- ***device_os:*** Operating system of each device type (spine, leaf and border)
-- ***creds_all:*** hostname (got from the inventory), username and password
+***dir_path:*** Base directory location on the Ansible host that stores all the validation and configuration snippets\
+***device_os:*** Operating system of each device type (spine, leaf and border)\
+***creds_all:*** hostname (got from the inventory), username and password\
 
 ### base.yml (bse)
 
 The settings required to onboard and manage device such as hostname format, IP address ranges, aaa, syslog, etc.
 
-***device_name:*** Naming format that the automatically generated node ID (double decimal format) is added to and the group name created from (in lowercase). The name must contain a hyphen (*-*) and the characters after that hyphen must be either letters, digits or underscore as that is what the group name is created from. For example using *DC1-N9K-SPINE* would mean that the device is *DC1-N9K-SPINE01* and the group is *spine*.
+***device_name:*** Naming format that the automatically generated *'Node ID'* (double decimal format) is added to and the group name created from (in lowercase). The name must contain a hyphen (*-*) and the characters after that hyphen must be either letters, digits or underscore as that is what the group name is created from. For example using *DC1-N9K-SPINE* would mean that the device is *DC1-N9K-SPINE01* and the group is *spine*
 
 | Key      | Value   | Information  |
 |----------|---------|--------------|
@@ -59,7 +59,7 @@ The settings required to onboard and manage device such as hostname format, IP a
 | `border`   | xx-xx | *Border switch device and group naming format*
 | `leaf`     | xx-xx | *Leaf switch device and group naming format*
 
-***addr:*** Subnets from which the device specific IP addresses are generated based on the *device type increment* and the *node number*. The majority of subnets need to be at least /27 to cover a maximum network size of 4 spines, 10 leafs and 4 borders (18 addresses)
+***addr:*** Subnets from which the device specific IP addresses are generated based on the *device-type increment* and the *Node ID*. The majority of subnets need to be at least /27 to cover a maximum network size of 4 spines, 10 leafs and 4 borders (18 addresses)
 
 | Key      | Value | Min size     | Information   |
 |----------|-------|--------------|---------------|
@@ -84,7 +84,7 @@ Variables used to determine how the fabric will be built, the network size, inte
 | `num_borders` | 2   | *Number of border switches in increments of 2 up to a maximum of 4*
 | `num_leafs`   | 4   | *Number of leaf switches in increments of 2 up to a maximum of 10*
 
-***num_intf:*** The total number of interfaces per-device-type is required to make the interface assignment declarative by ensuring that non-defined interfaces are reset to their default settings
+***num_intf:*** The total number of interfaces *per-device-type* is required to make the interface assignment declarative by ensuring that non-defined interfaces are reset to their default values
 
 | Key    | Value  | Information |
 |--------|--------|-------------|
@@ -108,7 +108,7 @@ Variables used to determine how the fabric will be built, the network size, inte
 | `mlag_peer`   | 5-6          | *Interfaces used for the MLAG peer Link*
 | `mlag_kalive` | mgmt         | *Interface for the keepalive. If it is not an integer uses the management interface*
 
-***adv.address_incre:*** Increments added to the node ID and subnet to generate unique device IP addresses. Uniqueness is enforced by using different increments for different device-types and functions
+***adv.address_incre:*** Increments added to the *'Node ID'* and subnet to generate unique device IP addresses. Uniqueness is enforced by using different increments for different *device-types* and functions
 
 | Key               | Value | Information   |
 |-------------------|-------|---------------|
@@ -124,9 +124,9 @@ Variables used to determine how the fabric will be built, the network size, inte
 | `mlag_border_ip`    | 21  | *Start IP for border OSPF peering over peer-link (default BORDER01 is .21, BORDER03 is .25, etc)*
 | `mlag_kalive_incre` | 28  | *Increment added to leaf/border increment (mlag_leaf_ip/mlag_border_ip) for keepalive addresses*
 
-If the management interface is not being used for the keepalive link either specify a separate network range (`bse.addr.mlag_kalive_net`) or use the peer-link range and specify an increment (`mlag_kalive_incre`) that is added to the peer-link increment (`mlag_leaf_ip` or `mlag_border_ip`) to generate unique addresses.
+If the management interface is not being used for the keepalive link either specify a separate network range (`bse.addr.mlag_kalive_net`) or use the peer-link range and define an increment (`mlag_kalive_incre`) that is added to the peer-link increment (`mlag_leaf_ip` or `mlag_border_ip`) to generate unique addresses.
 
-***route:*** Settings related to the fabric routing protocols (OSPF and BGP). BFD is not supported on unnumbered interfaces so the routing protocol timers have been shortened (OSPF 2/8, BGP 3/9), these are set under the advanced settings (`adv.route`)
+***route:*** Settings related to the fabric routing protocols (OSPF and BGP). BFD is not supported on unnumbered interfaces so the routing protocol timers have been shortened (OSPF 2/8, BGP 3/9), these are set under the variable file advanced settings (`adv.route`)
 
 | Key            | Value&nbsp;                 | Mandatory | Information |
 |----------------|-----------------------|-----------|-------------|
@@ -139,7 +139,7 @@ If the management interface is not being used for the keepalive link either spec
 
 ## Dynamic Inventory
 
-The *ansible*, *base* and *fabric* variables are passed through an *inventory_plugin* to create the dynamic inventory and *host_vars* of all the fabric interfaces and IP addresses. By doing this in the inventory the complexity is abstracted from the *base* and *fabric* role templates making it easier to expand the playbook to other vendors in the future.
+The *ansible*, *base* and *fabric* variables are passed through the ***inv_from_vars.py*** *inventory_plugin* to create the dynamic inventory and *host_vars* of all the fabric interfaces and IP addresses. By doing this in the inventory the complexity is abstracted from the *base* and *fabric* role templates making it easier to expand the playbook to other vendors in the future.
 
 With the exception of *intf_mlag* and *mlag_peer_ip* (not on the spines) the following *host_vars* are created for every host.
 
@@ -147,7 +147,7 @@ With the exception of *intf_mlag* and *mlag_peer_ip* (not on the spines) the fol
 - **ansible_network_os:** *Got from ansible var_file and used by napalm device driver*
 - **intf_fbc:** *Dictionary of fabric interfaces with interface the keys and description the values*
 - **intf_lp:** *List of dictionaries with keys of name, ip and description*
-- **intf_mlag:** *Dictionary of mlag peer-link interfaces with interface the key and description the value*
+- **intf_mlag:** *Dictionary of MLAG peer-link interfaces with interface the key and description the value*
 - **mlag_peer_ip:** *IP of the SVI (default VLAN2) used for the OSPF peering over the MLAG peer-link*
 - **num_intf:** *Number of the first and last physical interface on the switch*
 - **intf_mlag_kalive:** *Dictionary of MLAG keepalive link interface with interface the key and description the value (only created if defined)*
@@ -636,7 +636,7 @@ The base location for this directory can be changed using the `ans.dir_path` var
 
 ## Prerequisites
 
-The deployment has been tested on `NXOS 9.3(5)` using `ansible 2.10.6` and `Python 3.6.9`. To set up the environment follow the below steps, once all packages are installed run `napalm-ansible` to get the *napalm-ansible* paths and add these to *ansible.cfg* under *[defaults]*.
+The deployment has been tested on `NXOS 9.3(5)` using `ansible 2.10.6` and `Python 3.6.9`. Once the environment has been setup with all the packages installed run `napalm-ansible` to get the location of the napalm-ansible paths and add them to *ansible.cfg* under *[defaults]*.
 
 ```bash
 git clone https://github.com/sjhloco/build_fabric.git
@@ -646,7 +646,7 @@ source ~/venv/venv_ansible2.10/bin/activate
 pip install -r build_fabric/requirements.txt
 ```
 
-Before any configuration can be deployed using Ansible a few things need to be manually configured on all devices:
+Before any configuration can be deployed using Ansible a few things need to be manually configured on all N9K devices:
 
 - Management IP address and default route
 - The features *nxapi* and *scp-server* are required for Naplam *replace_config*
@@ -662,7 +662,7 @@ feature scp-server
 boot nxos bootflash:/nxos.9.3.5.bin sup-1
 ```
 
-- Leaf and border switches also need the TCAM allocation changed to allow for *arp-suppression*. This can differ dependant on device model, any changes made need correcting in `/roles/base/templates/nxos/bse_tmpl.j2` to keep it idempotent.
+- Leaf and border switches also need the TCAM allocation changed to allow for *arp-suppression*. This can differ dependant on device model, any changes made need correcting in `/roles/base/templates/nxos/bse_tmpl.j2` to keep it idempotent
 
 ```none
 hardware access-list tcam region racl 512
@@ -671,9 +671,9 @@ copy run start
 reload
 ```
 
-The default username/password for all devices is *admin/ansible* and is stored in the variable `bse.users.password`. Swap this out for the encrypted as *type5* password from the running config. The username and password used by Napalm to connect to devices is stored in `ans.creds_all` and will also need changing (plain-text so use vault).
+The default username/password for all devices is *admin/ansible* and is stored in the variable `bse.users.password`. Swap this out for the encrypted *type5* password got from the running config. The username and password used by Napalm to connect to devices is stored in `ans.creds_all` and will also need changing to match (is plain-text or use *vault*).
 
-Before the playbook can be run the devices SSH keys need adding on the Ansible host. *ssh_key_playbook.yml* (in *ssh_keys* directory) can be run to add these automatically, you just need to populate the device`s management IPs in the *ssh_hosts* file.
+Before the playbook can be run the devices SSH keys need adding on the Ansible host. *ssh_key_playbook.yml* (in *ssh_keys* directory) can be run to add these automatically, you just need to populate the device's management IPs in the *ssh_hosts* file.
 
 ```bash
 sudo apt install ssh-keyscan
@@ -682,7 +682,7 @@ ansible-playbook ssh_keys/ssh_key_add.yml -i ssh_keys/ssh_hosts
 
 ## Running playbook
 
-The device configuration is applied using Napalm with the differences always saved to file (*/device_configs/diff*) and optionally printed to screen. Napalm *commit_changes* is set to *True* meaning that Ansible *check-mode* is used for *dry-runs*. It can take 3 to 4 minutes to deploy the full configuration when including the service roles so the Napalm default timeout has been increased to 240 seconds.
+The device configuration is applied using Napalm with the differences always saved to *~/device_configs/diff/device_name.txt* and optionally printed to screen. Napalm *commit_changes* is set to *True* meaning that Ansible *check-mode* is used for *dry-runs*. It can take 3 to 4 minutes to deploy the full configuration when including the service roles so the Napalm default timeout has been increased to 240 seconds.
 
 Due to the declarative nature of the playbook and inheritance between roles there are only a certain number of combinations that the roles can be deployed in.
 
@@ -693,20 +693,20 @@ Due to the declarative nature of the playbook and inheritance between roles ther
 | `bse_fbc_tnt`  | Generates, joins and applies the *base*, *fabric*, *inft_cleanup* and *tenant* config snippets
 | `bse_fbc_intf` | Generates, joins and applies the *base*, *fabric*, *tenant*, *interface* and *inft_cleanup* config snippets
 | `full`         | Generates, joins and applies the *base*, *fabric*, *tenant*, *interface*, *inft_cleanup* and *route* config snippets
-| `rb`           | Reverses the last applied changes by deploying the rollback configuration (*rollback_config.txt*)
-| `diff`         | Prints the differences to screen (is also saved to file)
+| `rb`           | Reverses the last applied change by deploying the rollback configuration (*rollback_config.txt*)
+| `diff`         | Prints the differences between the *current_config* (on the device) and *desired_config* (applied by Napalm) to screen
 
-- ***diff*** tag can be used with *bse_fbc_tnt*, *bse_fbc_intf*, *full* or *rb* to print the configuration changes to screen
+- `diff` tag can be used with `bse_fbc_tnt`, `bse_fbc_intf`, `full` or `rb` to print the configuration changes to screen
 - Changes are always saved to file no matter whether *diff* is used or not
-- ***-C*** or ***--check-mode*** will do everything except actually apply the configuration
+- `-C` or `--check-mode` will do everything except actually apply the configuration
 
 ***pre-validation:*** Validates the contents of variable files defined under *var_files*. Best to use dummy host file instead of dynamic inventory\
 `ansible-playbook PB_build_fabric.yml -i hosts --tag post_val`
 
-***Generate the complete config:*** Creates the config snippets and compares against what is on the device to see what will be changed\
+***Generate the complete config:*** Creates the config snippets, assembles them in *config.cfg*, compares against device config and prints the diff\
 `ansible-playbook PB_build_fabric.yml -i inv_from_vars_cfg.yml --tag 'full, diff' -C`
 
-***Apply the config:*** Replaces current config on the device, the output is by default automatically saved to */device_configs/diff*\
+***Apply the config:*** Replaces current config on the device with changes made automatically saved to *~/device_configs/diff/device_name.txt*\
 `ansible-playbook PB_build_fabric.yml -i inv_from_vars_cfg.yml --tag full`
 
 All roles can be deployed individually to just to create the config snippet files, so no connections are made to devices or changes applied./
@@ -729,7 +729,7 @@ The `merge` tag can be used with any of to deploy the config snippet to merge ra
 
 ## Post Validation checks
 
-A declaration of how the fabric should be built (desired_state) is created from the values of the variables files and validated against the actual_state. *napalm_validate* can only perform a compliance check against anything it has a getter for, for anything not covered by this the *custom_validate* filter plugin is used. This plugin uses the same *napalm_validate* framework but the actual state is supplied through a static input file (got using *napalm_cli*) rather than a getter.
+A declaration of how the fabric should be built (desired_state) is created from the values of the variables files and validated against the actual_state. *napalm_validate* can only perform a compliance check against anything it has a getter for, for anything not covered by this the *custom_validate* filter plugin is used. This plugin uses the same *napalm_validate* framework but the actual state is supplied through a static input file (got using *napalm_cli*) rather than a getter.  Both validation engines are within the same validate role with separate template and task files.
 
 The results of the napalm_validate (*nap_val.yml*) and custom_validate (*cus_val.yml*) tasks are joined together to create the one combined compliance report. Each getter or command has a *complies* dictionary (True or False) to report its state which feeds into the compliance reports overall *complies* dictionary. It is based on this value that a task in the post-validation playbook will raise an exception.
 
@@ -814,9 +814,9 @@ As deployments are declarative and there are differences with physical devices y
 {# system nve infra-vlans {{ fbc.adv.mlag.peer_vlan }} #}
 ```
 
-Although they work on EVE-NG it is not perfect for running N9Kv. I originally started on `nxos.9.2.4` and although it is fairly stable in terms of features and uptime, the API can be very slow at times taking upto 10 minuets to deploy a device config. Sometimes after a deployment the API would stop responding (couldn't telnet on 443) but NXOS CLI said it was listening. To fix this you have disable and re-enable the *nxapi* feature. Removing the command 'nxapi use-vrf management' seems to help to make the API more stable.
+Although they work on EVE-NG it is not perfect for running N9Kv. I originally started on `nxos.9.2.4` and although it is fairly stable in terms of features and uptime, the API can be very slow at times taking upto 10 minuets to deploy a device config. Sometimes after a deployment the API would stop responding (couldn't telnet on 443) but NXOS CLI said it was listening. To fix this you have disable and re-enable the *nxapi* feature. Removing the command `nxapi use-vrf management` seems to help to make the API more stable.
 
-I moved onto to NXOS `nxos.9.3.5` and although the API is faster and has more stablbility, there is a different issue around the interface module. When the N9Kv went to 9.3 the interfaces where moved to a separate module, module 1.
+I moved onto to NXOS `nxos.9.3.5` and although the API is faster and has more stability, there is a different issue around the interface module. When the N9Kv went to 9.3 the interfaces where moved to a separate module, module 1.
 
 ```none
 Mod Ports             Module-Type                      Model           Status
@@ -825,7 +825,7 @@ Mod Ports             Module-Type                      Model           Status
 27   0    Virtual Supervisor Module             N9K-vSUP              active *
 ```
 
-Once I get past five NXOS devices the interfaces module becomes unstable on the new devices, either randomly crashing or going into the *pwr-cycld* state at startup after the inital bootup tests.
+Once I get past five NXOS devices the interfaces module becomes unstable on the new devices, either randomly crashing or going into the *pwr-cycld* state at startup after the initial bootup tests.
 
 ```none
 Mod Ports             Module-Type                      Model           Status
