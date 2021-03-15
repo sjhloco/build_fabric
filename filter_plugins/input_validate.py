@@ -12,7 +12,7 @@ bse.mgmt_acl: Validates ACLs have source prefixes defined and are of a valid IPv
 bse.adv.image: Validates image and image_name are defined
 bse.adv.exec_timeout: Validates the timeouts are integers
 
--core fabric configuration variables using fabric.yml
+-core fabric configuration variables using fabric.yml:
 fbc.network_size: Ensures the number of each type of device is within the limits and constraints
 fbc.num_intf: Ensures is one number, then a comma and then up to 3
 fbc.route.authentication: Ensure that the BGP and OSPF contains no whitespace
@@ -27,7 +27,7 @@ fbc.adv.lp: Ensures all the loopback names are unique, no duplicates
 fbc.adv.mlag: Ensures all of MLAG parameters are integers and VLANs within limit
 fbc.adv.addr_incre: Ensures all of the IP address increment values used are integers and are all unique
 
--tenants (VRFs, VNIs & VLANs) using service_tenant.yml
+-tenants (VRFs, VNIs & VLANs) using service_tenant.yml:
 svc_tnt.tnt.tenant_name/l3_tenant: Ensures all tenants have a name (no restrictions) and marked as L3 or not
 svc_tnt.tnt.vlans.num/name: Ensure that the VLAN number and name dictionaries are configured under the tenant
 svc_tnt.tnt.tenant_name: Ensures that all tenant names are unique, cant have duplicates
@@ -45,7 +45,7 @@ svc_tnt.adv.bse_vni: Ensures all values are integers
 svc_tnt.adv.bse_vni.tnt_vlan: Makes sure none of the VLANs are the same VLAN number as the the L3VNI tenant VLAN numbers
 svc_tnt.adv.redist.rm_name: Ensures that it contains 'src' and 'dst' within its name
 
--Interfaces (single_homed, dual_homed & port-channels) using interface_tenant.yml
+-Interfaces (single_homed, dual_homed & port-channels) using interface_tenant.yml:
 svc_intf.intf.homed: Ensures that single-homed or dual-homed dictionaries are not empty
 svc_intf.intf.homed.descr/type/ip_vlan/switch: Ensures that description, intf_type, ip/vlan and switch mandatory dicts are not empty
 svc_intf.intf.homed.intf_num: Ensures that intf_num is integer (also added to a new list to check interface assignment)
@@ -70,7 +70,7 @@ svc_intf.intf.dual_homed: Ensures are enough free ports in the range (range minu
 svc_intf.intf.port-channel: Ensures are enough free port-channels in the range (range minus conflicting static assignments) for number of port-channels defined
 svc_intf.intf.homed: Make sure that are not more defined interfaces (single and dual_homed) than there are actual interfaces on the switch
 
--Non-backbone routing (BGP, OSPF and static) using service_route.yml
+-Non-backbone routing (BGP, OSPF and static) using service_route.yml:
 svc_rte.bgp.group.name: Ensure that the BGP group name is configured
 svc_rte.bgp.group.peer.name/desc/peer_ip: Ensure that the dictionary is configured on the peer
 svc_rte.bgp.group/peer.switch/remote_as: Ensure that the dict is configured on group, or if not in all peers in that group

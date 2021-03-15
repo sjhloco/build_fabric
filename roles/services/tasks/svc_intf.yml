@@ -2,13 +2,13 @@
 ### Uses template to build the interface config from service_interface.yml. Defines the port type (L3, trunk, access, etc) and port-channel###
 - name: "Create the interface configuration snippets"
   block:
-    - name: "SYS >> Creating per-device service_interface data-models"
+    - name: "INTF >> Creating per-device service_interface data-models"
       set_fact:
         flt_svc_intf: "{{ svc_intf.intf |create_svc_intf_dm(inventory_hostname, svc_intf.adv, fbc.adv.bse_intf) }}"
       changed_when: False           # Stops it reporting changes in playbook summary
   check_mode: False                 # These tasks still make changes when in check mode
 
-- name: "SYS >> Generating service_interface config snippets"
+- name: "INTF >> Generating service_interface config snippets"
   template:
     src: "{{ ansible_network_os }}/svc_intf_tmpl.j2"
     dest: "{{ ans.dir_path }}/{{ inventory_hostname }}/config/svc_intf.conf"

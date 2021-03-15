@@ -2,14 +2,14 @@
 ### Uses template to build the tenant router configuration, so defines BGP and OSPF using variables from service_route.yml ####
 - name: "Create the routing configuration snippets"
   block:
-    - name: "SYS >> Creating per-device service_route data-models"
+    - name: "RTE >> Creating per-device service_route data-models"
       set_fact:
         flt_svc_rte: "{{ inventory_hostname |create_svc_rte_dm(svc_rte.bgp.group |default (), svc_rte.bgp.tnt_advertise |default (),
                          svc_rte.ospf |default (), svc_rte.static_route |default (), svc_rte.adv, fbc) }}"
       changed_when: False           # Stops it reporting changes in playbook summary
   check_mode: False                 # These tasks still make changes when in check mode
 
-- name: "SYS >> Generating the service_route configuration snippets"
+- name: "RTE >> Generating the service_route configuration snippets"
   template:
     src: "{{ ansible_network_os }}/svc_rte_tmpl.j2"
     dest: "{{ ans.dir_path }}/{{ inventory_hostname }}/config/svc_rte.conf"
