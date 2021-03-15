@@ -703,7 +703,7 @@ Due to the declarative nature of the playbook and inheritance between roles ther
 ***pre-validation:*** Validates the contents of variable files defined under *var_files*. Best to use dummy host file instead of dynamic inventory\
 `ansible-playbook PB_build_fabric.yml -i hosts --tag post_val`
 
-***Generate the complete config:*** Creates the config snippets, assembles them in *config.cfg*, compares against device config and prints the diff\
+***Generate the complete config:*** Creates config snippets, assembles them in *config.cfg*, compares against device config and prints the diff\
 `ansible-playbook PB_build_fabric.yml -i inv_from_vars_cfg.yml --tag 'full, diff' -C`
 
 ***Apply the config:*** Replaces current config on the device with changes made automatically saved to *~/device_configs/diff/device_name.txt*\
