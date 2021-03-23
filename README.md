@@ -708,8 +708,7 @@ Due to the declarative nature of the playbook and inheritance between roles ther
 ***Apply the config:*** Replaces current config on the device with changes made automatically saved to *~/device_configs/diff/device_name.txt*\
 `ansible-playbook PB_build_fabric.yml -i inv_from_vars_cfg.yml --tag full`
 
-All roles can be deployed individually to just to create the config snippet files, so no connections are made to devices or changes applied./
-The `merge` tag can be used with any of to deploy the config snippet to merge rather than replace the configuration non-declaratively. As the L3VNIs and interfaces are generated automatically the variable files still need at a bare minimum current tenants and interfaces as well as the advanced variable sections.
+All roles can be deployed individually to just to create the config snippet files, no connections are made to devices or changes applied. The `merge` tag can be used in conjunction with any combination of these role tags to non-declaratively merge the config snippets with the current device config rather than replacing it. As the L3VNIs and interfaces are generated automatically at a bare minimum the variable files will still need current tenants and interfaces as well as the advanced variable sections.
 
 | Ansible tag | Playbook action |
 |-------------|-------------|
@@ -723,7 +722,7 @@ The `merge` tag can be used with any of to deploy the config snippet to merge ra
 ***Generate the fabric config:*** Creates the fabric and interface cleanup config snippets and saves them to *fabric.conf* and *dflt_intf.conf*\
 `ansible-playbook PB_build_fabric.yml -i inv_from_vars_cfg.yml --tag fbc`
 
-***Apply tenants and interfaces non-declaratively:*** Adds additional tenant and routing objects by merging with the current config. The diffs for merges are simply the lines in the merge candidate config, therefore these wont be as true as the diffs from declerative deployments\
+***Apply tenants and interfaces non-declaratively:*** Add additional tenant and routing objects by merging their config snippets with the devices config. The diffs for merges are simply the lines in the merge candidate config so wont be as true as the diffs from declarative deployments\
 `ansible-playbook PB_build_fabric.yml -i inv_from_vars_cfg.yml --tag tnt,rte,merge,diff`
 
 ## Post Validation checks
