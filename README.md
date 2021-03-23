@@ -255,7 +255,7 @@ Tenants, SVIs, VLANs and VXLANs are created based on the variables stored in the
 | `num` | integer | Yes | *The VLAN number*
 | `name` | string | Yes | *The VLAN name*
 | `ip_addr` | x.x.x.x/x | No |  *Adding an IP address automatically making the VLAN L3 (not set by default)*
-| `ipv4_bgp_redist` | True or False | No | *Dictates whether the SVI is redistributed into VRF BGP addr family (default True)*
+| `ipv4_bgp_redist` | True or False | No | *Dictates whether the SVI is redistributed into BGP VRF address family (default True)*
 | `create_on_leaf` | True or False | No | *Dictates whether this VLAN is created on the leafs (default True)*
 | `create_on_border` | True or False | No | *Dictates whether this VLAN is created on the borders (default False)*
 | `vxlan` | True or False | No | *Whether VXLAN or normal VLAN. Only need if don't want it to be a VXLAN*
@@ -284,7 +284,7 @@ The L2VNI and L3VNI values are automatically derived and incremented on a per-te
 
 For example a two tenant fabric each with a VLAN 20 using the above values would have L3 tenant SVIs of *3001, 3002*, L3VNIs or *10003001, 10003002* and L2VNIs of *10020* and *20020*.
 
-A new data-model is created from the *services_tenant.yml* variables by passing these through the ***format_dm.py*** filter_plugin method ***create_svc_tnt_dm*** along with the BGP route-map name (if exists) and ASN (from fabric.yml). The result is a per-device-type (leaf and border) list of tenants, SVIs and VLANs which are used to render the ***svc_tnt_tmpl.j2*** template and create the config snippet.
+A new data-model is created from the *services_tenant.yml* variables by passing them through the ***format_dm.py*** filter_plugin method ***create_svc_tnt_dm*** along with the BGP route-map name (if exists) and ASN (from fabric.yml). The result is a per-device-type (leaf and border) list of tenants, SVIs and VLANs which are used to render the ***svc_tnt_tmpl.j2*** template and create the config snippet.
 
 Below is an example of the data model format for a tenant and its VLANs.
 
@@ -330,15 +330,15 @@ The *service_interface.yml* variables define single or dual-homed interfaces (in
 
 There are 7 pre-defined interface types that can be deployed:
 
-- **access:** *A single VLAN layer2 access port with STP is set to 'edge'*
+- **access:** *A single VLAN layer2 access port with STP set to 'edge'*
 - **stp_trunk:** *A trunk going to a device that supports Bridge Assurance. STP is set to 'network'*
-- **stp_trunk_non_ba:** *Same as stp_trunk except that STP is set to 'normal' as it is for devices that don't support BA*
+- **stp_trunk_non_ba:** *Same as stp_trunk except STP is set to 'normal' as it is for devices that don't support BA*
 - **non_stp_trunk:** *A trunk port going to a device that doesn't support BPDU. STP is set to 'edge' and BPDU Guard enabled*
 - **layer3:** *A layer3 interface with an IP address. Must be single-homed as MLAG not supported for L3 interfaces*
 - **loopback:** *A loopback interface with an IP address (must be single-homed)*
 - **svi:** *To define a SVI the VLAN must exist in service_tenant.yml and not be a VXLAN (must be single-homed)*
 
-The ***intf.single_homed*** and ***intf.dual-homed*** dictionaries both hold a list of all single-homed or dual-homed interfaces using any of the attributes in the table below. If there are no single-homed or dual-homed interfaces on the fabric hash out the relevant dictionary.
+The ***intf.single_homed*** and ***intf.dual-homed*** dictionaries hold a list of all single-homed or dual-homed interfaces using any of the attributes in the table below. If there are no single-homed or dual-homed interfaces on the fabric hash out the relevant dictionary.
 
 | Key        | Value   | Mand  | Information |
 |------------|---------|-------------|-------------|
@@ -372,7 +372,7 @@ The playbook has the logic to recognize if statically defined interface numbers 
 | `first_po`   | integer | *First port-channel number to be dynamically used*
 | `last_po`    | integer | *Last port-channel number to be dynamically used*
 
-The ***format_dm.py*** filter_plugin method ***create_svc_intf_dm*** is run for each inventory device to produce a list of all interfaces to be created on that device. In addition to the *services_interface.yml* variables it also passes in the interface naming format (*fbc.adv.bse_intf*) to create the full interface name and *hostname* to find the interfaces relevant to that device. This is saved to the fact *flt_svc_intf* which is used to render the ***svc_intf_tmpl.j2*** template and create the config snippet.
+The ***format_dm.py*** filter_plugin method ***create_svc_intf_dm*** is run for each inventory host to produce a list of all interfaces to be created on that device. In addition to the *services_interface.yml* variables it also passes in the interface naming format (*fbc.adv.bse_intf*) to create the full interface name and *hostname* to find the interfaces relevant to that device. This is saved to the fact *flt_svc_intf* which is used to render the ***svc_intf_tmpl.j2*** template and create the config snippet.
 
 Below is an example of the data model format for a single-homed and dual-homed interface.
 
@@ -422,8 +422,7 @@ I am undecided about this role as it goes against the simplistic principles used
 Routes are added per-tenant with the tenant being the top-level dictionary that routes are created under.
 
 - *tenant*, *switch* and *prefix* are lists to make it easy to apply the same routes across multiple devices and tenants
-- For routes with the same attributes (like next-hop) can group all the routes as a list within the one `prefix` dictionary key
-- Can optionally set next-hop interface, administrative distance and the next hop VRF (for route leaking between VRFs)
+- For routes with the same attributes (like next-hop) can group all the routes as a list within the one `prefix` dictionary value
 
 | Parent dict  | Key           | Value      | Mand | Information |
 |--------------|---------------|------------|------|-------------|
@@ -432,7 +431,7 @@ Routes are added per-tenant with the tenant being the top-level dictionary that 
 | route        | `prefix`       | list     | Yes | *List of routes that all have same settings (gateway, interface, switch, etc)*
 | route        | `gateway`      | x.x.x.x    | Yes | *Next hop gateway address*
 | route        | `interface`    | string   | No  | *Next hop interface, use interface full name (Ethernet), Vlan or Null0*
-| route        | `ad`           | integer | No  | *Set the administrative distance for this group of routes (1 - 255)*
+| route        | `ad`           | integer | No  | *Set the admin distance for this group of routes (1 - 255)*
 | route        | `next_hop_vrf` | string   | No  | *Set the VRF for next-hop if it is in a different VRF (route leaking between VRFs)*
 | route        | `switch`       | list     | Yes | *Switches to create this group of routes on (overrides static_route.switch)*
 
@@ -444,14 +443,14 @@ An OSPF processes can be configured for any of the tenants or the global routing
 - The mandatory `process.switch` list defines the switches the OSPF process is configured on
 - Non-mandatory settings only need to be defined if changing the default behavior, otherwise is no need to add the dictionary
 
-| Key      | Value            | Mandatory | Information |
+| Key      | Value&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;            | Mand | Information |
 |----------|-----------------|-----------|-------------|
 | `process` | integer or string | Yes | *The process can be a number or word*
 | `switch` | list | Yes | *List of switches to create the OSPF process on*
 | `tenant` | string | No | *The VRF OSPF is enabled in. If not defined uses the global routing table*
 | `rid` | list | No | *List of RIDs, must match number of switches (if undefined uses highest loopback)*
 | `bfd` | True | No | *Enable BFD globally for all interfaces (disabled by default)*
-| `default_orig` | True, always | No | *Conditionally (True) or always advertise a default route (disabled by default)*
+| `default_orig` | True, always | No | *Conditionally (True) or always advertise default route (disabled by default)*
 
 *Interface*, *summary* and *redistribution* are child dictionaries of lists under the *ospf* parent dictionary. They inherit `process.switch` unless `switch` is specifically defined under that child dictionary.
 
@@ -469,7 +468,7 @@ An OSPF processes can be configured for any of the tenants or the global routing
 | `hello` | integer | No | *Interface hello interval (deadtime is x4), automatically disables BFD for this interface*
 | `type` | point-to-point | No | *By default all interfaces are broadcast, can be changed to point-to-point*
 
-***ospf.summary:*** All summaries with the same attributes (*switch*, *filter*, *area*) can be grouped in a list within the one `prefix` dictionary key
+***ospf.summary:*** All summaries with the same attributes (*switch*, *filter*, *area*) can be grouped in a list within the one `prefix` dictionary value
 
 | Key      | Value | Mandatory | Information |
 |----------|-------|-----------|-------------|
@@ -489,7 +488,7 @@ An OSPF processes can be configured for any of the tenants or the global routing
 
 ### BGP
 
-Uses the concept of *groups* and *peers* with the majority of the settings configured in either. Peer settings take precedence over group.
+Uses the concept of *groups* and *peers* with the majority of the settings configured in either
 
 - `group` holds the global settings for all peers within it. Are automatically created on any switches that peers within it are created
 - `peer` is a list of peers within the group. If the setting is configured in the group and peer the peer setting will take precedence
@@ -497,7 +496,7 @@ Uses the concept of *groups* and *peers* with the majority of the settings confi
 - If the tenant is not specified (dictionary not defined) the group or peer will be added to the default global routing table
 - Non-mandatory settings only need to be defined if changing the default behavior, otherwise is no need to add the dictionary
 
-| Set in  | Key      | Value     | Mandatory | Information |
+| Set in  | Key      | Value     | Mand | Information |
 |-------|----------|------------|-----------|-------------|
 | group | `name` | string | Yes | *Name of the group, no whitespaces or duplicate names (group or peer)*
 | peer | `name` | string |  Yes | *Name of the peer, no whitespaces or duplicate names (group or peer)*
@@ -506,7 +505,7 @@ Uses the concept of *groups* and *peers* with the majority of the settings confi
 | both | `switch` | list |  Yes | *List of switches (even if is only 1) to create the group and peers on*
 | both | `tenant` | list |  No | *List of tenants (even if is only 1) to create the peers under*
 | both | `remote_as` | integer | Yes | *Remote AS of this peer or if group all peers within that group*
-| both | `timers` | [klv, htm] | No | *List of [keepalive, holdtime], if  not defined uses [3, 9] seconds*
+| both | `timers` | [kl,ht] | No | *List of [keepalive, holdtime], if  not defined uses [3, 9] seconds*
 | both | `bfd` | True | No | *Enable BFD for an individual peer or all peers in group (disabled by default)*
 | both | `password` | string | No | *Plain-text password to authenticate a peer or all peers in group (default none)*
 | both | `default` | True | No | *Advertise default route to a peer or all peers in the group (default False)*
@@ -514,9 +513,9 @@ Uses the concept of *groups* and *peers* with the majority of the settings confi
 | both | `ebgp_multihop` | integer | No | *Increase the number of hops for eBGP peerings (2 to 255)*
 | both | `next_hop_self` | True | No | *Set the next-hop to itself for any advertised prefixes (default not set)*
 
-***inbound*** or ***outbound:*** Can be optionally set under group or peer to filter BGP advertisements and/ or BGP attribute manipulation
+***inbound*** or ***outbound:*** Optionally set under the group or peer to filter BGP advertisements and/ or BGP attribute manipulation
 
-- The naming of the route-maps and prefix-lists are dependant on where they are applied (group or peer)
+- The naming of the *route-maps* and *prefix-lists* are dependant on where they are applied (group or peer)
 - All attribute settings are dictionaries with the key being the attribute and the value the prefixes it is applied to
 
 | Key      | Value | Direction |Information |
@@ -530,9 +529,9 @@ Uses the concept of *groups* and *peers* with the majority of the settings confi
 
 ***bgp.tnt_advertise:*** Optionally advertise prefixes on a per-tenant basis (list of VRFs) using network, summary and redistribution. The `switch` can be set globally for all network/summary/redist in a VRF and be overridden on an individual per-prefix basis
 
-- ***network:*** List of prefixes to be advertised on a per-switch basis (*network* cmd). If a device is covered by 2 different *network.prefix* statements it will get a combination of them both (merged), so *network* statements for all prefixes
+- ***network:*** List of prefixes to be advertised on a per-switch basis (*network* cmd). If a device is covered by 2 different `network.prefix` statements it will get a combination of them both (merged), so *network* statements for all prefixes
 - ***summary:*** Group summaries (*aggregate-address*) with the same attributes (*switch* and *summary_only*) within the same list element
-- ***redist:*** Each list element is the redistribution type (*ospf process*, *static* or *connected*) with the redistributed prefixes weighted (*metric*) and/or filtered (*allow*). If the allow list is not set it is allow any (empty route-map). Can only have one each of *connected* and *static* per-switch, first occurrence is used. The switch set under the redistribution type is preferred over that set in *process.switch*, is no merging
+- ***redist:*** Each list element is the redistribution type (*ospf process*, *static* or *connected*) with the redistributed prefixes weighted (*metric*) and/or filtered (*allow*). If the allow list is not set it is allow any (empty route-map). Can only have one each of types *connected* and *static* per-switch, first occurrence is used. The switch set under the redistribution type is preferred over that set in `process.switch`, is no merging
 
 | Set in          | Key    | Value    | Mand | Information |
 |-----------------|--------|----------|-----------|-------------|
@@ -542,11 +541,11 @@ Uses the concept of *groups* and *peers* with the majority of the settings confi
 | summary         | `filter` | summary-only | No | *Only advertise the summary, suppress all prefixes within it (disabled by default)*
 | redist          | `type`   | string | Yes | *Redistribute ospf_process (whitespace before process), static or connected*
 | redist          | `metric` | dict | No | *Add metric to redistributed prefixes. Keys are the MED value and values a list of prefixes or keyword ('any' or 'default'). Cant use metric with connected*
-| redist          | `allow`  | list, any, default | No | *List of prefixes (can use 'ge' and/or 'le'), interfaces (for connected) or keyword ('any' or 'default') to redistribute. Placed after the metric in the RM sequence*
+| redist          | `allow`  | list, any, default | No | *List of prefixes (can use 'ge' and/or 'le'), interfaces (for connected) or keyword ('any' or 'default') to redistribute*
 
-Advanced settings (*svc_rte.adv*) allow the changing of the default routing protocol timers and naming convention of the route-maps and prefix-lists used for advertisement and redistribution.
+Advanced settings (*svc_rte.adv*) allow the changing of the default routing protocol timers and naming format of the *route-maps* and *prefix-lists* used for advertisement and redistribution.
 
-The filter_plugin method ***create_svc_rte_dm*** is run for each inventory device to produce a data model of the routing configuration for that device. The outcome is a list of seven per-device data models that are used by the *svc_rte_tmpl.j2* template.
+The filter_plugin method ***create_svc_rte_dm*** is run for each inventory host to produce a data model of the routing configuration for that device. The outcome is a list of seven per-device data models that are used by the *svc_rte_tmpl.j2* template.
 
 - **all_pfx_lst**: *List of all prefix-lists with each element in the format [name, seq, permission, prefix]*
 - **all_rm**: *List of all route-maps with each element in the format [name, seq, permission, prefix, [attribute, value]]. If no BGP attributes are set in the RM the last entry in the list will be [null, null]*
@@ -564,10 +563,10 @@ The filter_plugin method ***create_svc_rte_dm*** is run for each inventory devic
 
 There are four main types of passwords used within the playbooks.
 
-- BGP/OSPF: In the variable file it is in as plain text but in the device running configuration is encrypted
-- Users: Has to be in encrypted format (type-5) in the variable file
-- TACACS: Has to be in the encrypted format (type-7) in the variable. Could use type-6 but would also need to generate a master key
-- device: The password used by Napalm to log into devices defined under `ans.creds_all`. Can be plain-text or use vault
+- ***BGP/OSPF:*** In the variable file it is in as plain text but in the device running configuration is encrypted
+- ***Users:*** Has to be in encrypted format (type-5) in the variable file
+- ***TACACS:*** Has to be in the encrypted format (type-7) in the variable. Could use type-6 but would also need to generate a master key
+- ***device:*** The password used by Napalm to log into devices defined under `ans.creds_all`. Can be plain-text or use vault
 
 ## Input validation
 
