@@ -799,7 +799,7 @@ Post-validation is hierarchial as the addition of elements in the later roles ef
 ***Run fabric validation:*** Runs validation against the *desired state* got from all the variable files. There is no differentiation between *naplam_validate* and *custom_validate*, both are run as part of the validation tasks\
 `ansible-playbook PB_post_validate.yml -i inv_from_vars_cfg.yml --tag full`
 
-***Viewing compliance report:*** Viewing the whole validation report\
+***Viewing compliance report:*** When viewing the validation report piping it through *json.tool* makes it more human readable\
 `cat ~/device_configs/reports/DC1-N9K-SPINE01_compliance_report.json | python -m json.tool`
 
 ## Caveats
