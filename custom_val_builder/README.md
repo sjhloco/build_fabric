@@ -119,22 +119,21 @@ As the data model is created in python it is easier than Ansible to troubleshoot
 ok: [DC1-N9K-BORDER02] => {
     "validate_result": {
         "show ip ospf interface brief vrf all": {
-            "Eth1/1": {
+            "Vlan2": {
                 "area": "0.0.0.0",
                 "nbr_count": "1",
                 "proc": "DC_UNDERLAY",
                 "status": "up"
             },
-            "Eth1/11": {
-                "area": "0.0.0.99",
+            "Eth1/1": {
+                "area": "0.0.0.0",
                 "nbr_count": "1",
-                "proc": "99",
+                "proc": "DC_UNDERLAY",
                 "status": "up"
             }
         }
     }
 }
-
 ```
 
 4\. **DESIRED_DM:** Now we know what our actual state looks like we need to create the desired state DM and test. *desired_state.yml* is rendered from the template (*var_tmpl.j2*) so the configuration should be in *var_tmpl.j2*

@@ -1,6 +1,5 @@
 cmds:
-
-cmds:
+  - show ip ospf interface brief
   - show ip ospf interface brief vrf all:
 {% for each_proc in svc_rte.ospf %}{% if each_proc.interface is defined %}
 {# Checks if local host is in the switches defined under interface, if not then checks under process #}
