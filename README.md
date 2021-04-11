@@ -804,7 +804,7 @@ Post-validation is hierarchial as the addition of elements in the later roles ef
 
 ## Caveats
 
-When staring this project I used N9Kv on EVE-NG and later moved onto physical devices when we were deploying the data centers. vPC fabric peering does not work on the virtual devices so this was never added as an option in the playbook.
+When starting this project I used N9Kv on EVE-NG and later moved onto physical devices when we were deploying the data centers. vPC fabric peering does not work on the virtual devices so this was never added as an option in the playbook.
 
 As deployments are declarative and there are differences with physical devices you will need a few minor tweaks to the *bse_tmpl.j2* template as different hardware can have slightly different hidden base commands. The `system nve infra-vlans` command is required for infrastructure VLANs (OSPF over vPC peer link VLAN) and to run VLXAN over a VLAN but is not supported on N9Kv. For physical devices this line needs unhashing at the start of *bse_tmpl.j2* template.
 
