@@ -4,7 +4,9 @@ This playbook will deploy a leaf and spine fabric and its related services in a 
 
 This came from my project for the [IPSpace Building Network Automation Solutions](https://www.ipspace.net/Building_Network_Automation_Solutions) course and was used in part when we were deploying Cisco 9k leaf and spine fabrics in our Data Centers. The playbook is structured in a way that it should hopefully not be too difficult to add templates to deploy leaf and spine fabrics for other vendors. My plan was to add Arista and Juniper but is unlikely to happen.
 
-I now am done with building DCs (bring on the :cloud:) and with this being on the edge of the limit of my programing knowledge I don't envisage making any future changes. This README is intended to give enough information to understand the playbooks structure and run it. The variable files hold examples of a deployment with more information on what each variable does. For more detailed information about the playbook have a look at the series off posts I did about it on my [blog](https://theworldsgonemad.net/2021/automate-dc-pt1).
+I now am done with building DCs (bring on the :cloud:) and with this being on the edge of the limit of my programing knowledge I don't envisage making any future changes. If any of it is useful to you please do take it and mold it to your own needs. 
+
+This README is intended to give enough information to understand the playbooks structure and run it. The variable files hold examples of a deployment with more information on what each variable does. For more detailed information about the playbook have a look at the series off posts I did about it on my [blog](https://theworldsgonemad.net/2021/automate-dc-pt1).
 
 <hr>
 
