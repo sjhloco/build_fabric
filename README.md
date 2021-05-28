@@ -22,7 +22,7 @@ The playbook deployment is structured into the following 5 roles with the option
 If you wish to have a more custom build the majority of the settings in the variable files (unless specifically stated) can be changed as none of the scripting or templating logic uses the actual contents (dictionary values) to make decisions.
 
 This deployment will scale up to a max of 4 spines, 4 borders and 10 leafs, this is how it will be deployed with the default values.
-![network_topology](https://user-images.githubusercontent.com/33333983/111144152-96f5d980-857e-11eb-9ba4-ac064364b50d.png)
+![net_top](https://user-images.githubusercontent.com/33333983/120030278-2abc3b00-bfef-11eb-8ead-ee663b2c2919.png)
 
 The default ports used for inter-switch links are in the table below, these can be changed within *fabric.yml* (*fbc.adv.bse_intf*).
 
@@ -791,12 +791,12 @@ To aid with creating new validations the ***custom_val_builder*** directory is a
 
 Post-validation is hierarchial as the addition of elements in the later roles effects the validation outputs in the earlier roles. For example, extra VLANs added in tenant_service will effect the bse_fbc post-validate output of *show vpc* (peer-link_vlans). For this reason post-validation must be run for the current role and all applied roles before it. This is done automatically by Jinja template inheritance as calling a template with the *extends* statement will also render the inheriting templates.
 
-| Ansible tag | Playbook action |
-|-------------|-------------|
-| `fbc_bse`   | Validates the configuration applied by the *base* and *fabric* roles
-| `tnt`       | Validates the configuration applied by the *base*, *fabric* and *tenant* roles
-| `intf`      | Validates the configuration applied by the *base*, *fabric*, *tenant* and *interfaces* roles
-| `full`      | Validates the configuration applied by the *base*, *fabric*, *tenant*, *interfaces* and *route* roles
+| Ansible tag.       | Playbook action |
+|--------------------|-----------------|
+| `fbc_bse`          | Validates the configuration applied by the *base* and *fabric* roles
+| `bse_fbc_tnt`      | Validates the configuration applied by the *base*, *fabric* and *tenant* roles
+| `bse_fbc_tnt_intf` | Validates the configuration applied by the *base*, *fabric*, *tenant* and *interfaces* roles
+| `full`             | Validates the configuration applied by the *base*, *fabric*, *tenant*, *interfaces* and *route* roles
 
 ***Run fabric validation:*** Runs validation against the *desired state* got from all the variable files. There is no differentiation between *naplam_validate* and *custom_validate*, both are run as part of the validation tasks\
 `ansible-playbook PB_post_validate.yml -i inv_from_vars_cfg.yml --tag full`
