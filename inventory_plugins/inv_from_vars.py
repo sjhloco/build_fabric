@@ -166,7 +166,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
             self.mlag_peer[self.border[incr_num -1]] = str(ip_network(self.addr['mlag_peer_net'], strict=False)[mlag_incr]) + '/30'
             # If MLAG keepalive interface uses mgmt (not a integer) use the mgmt IP
             if isinstance(self.bse_intf['mlag_kalive'], int) == False:
-                self.mlag_kalive[self.border[incr_num -1]] = self.all_mgmt[self.leaf[incr_num -1]]
+                self.mlag_kalive[self.border[incr_num -1]] = self.all_mgmt[self.border[incr_num -1]]
              # If MLAG keepalive interface uses an interface (is an integer) generated from keepalive range if defined, if not from peer range
             elif isinstance(self.bse_intf['mlag_kalive'], int) == True:
                 self.mlag_kalive[self.border[incr_num -1]] = str(ip_network(self.addr.get('mlag_kalive_net', self.addr['mlag_peer_net']),

@@ -20,13 +20,25 @@ hardware access-list tcam region racl 512
 hardware access-list tcam region arp-ether 256 double-wide
 {% endif %}
 
+{####### VERSIONS - Differences between NXOS versions 9.2.4 and 9.3.x (also see vdc section) #######}
+{% if bse.adv.image == 'nxos.9.2.4.bin' %}
+boot nxos bootflash:/{{ bse.adv.image }}
+crypto key param rsa label {{ inventory_hostname }}.{{ bse.services.domain |default('evilcorp.com') }} modulus 2048
+nxapi ssl protocols TLSv1.1 TLSv1.2
+{% else %}
+boot nxos bootflash:/{{ bse.adv.image }} sup-1
+crypto key generate rsa label {{ inventory_hostname }}.{{ bse.services.domain |default('evilcorp.com') }} modulus 2048
+no nxapi client certificate authentication
+nxapi ssl protocols TLSv1.2
+nxapi idle-timeout 10
+icam monitor scale
+{% endif %}
+
 {####### General settings and features #######}
 hostname {{ inventory_hostname }}
 no ip domain-lookup
 ip domain-name {{ bse.services.domain |default('evilcorp.com') }}
 ip name-server {{ bse.services.dns.prim| default('8.8.8.8') }} {{ bse.services.dns.sec| default('1.1.1.1') }}
-crypto key generate rsa label {{ inventory_hostname }}.{{ bse.services.domain |default('evilcorp.com') }} modulus 2048
-boot nxos bootflash:/{{ bse.adv.image }} sup-1
 
 system default switchport shutdown
 no nxapi http
@@ -34,9 +46,6 @@ nxapi https port 443
 {# On N9Kv cmd intermitantly breaks API and have remove/add back feature nxapi #}
 {# nxapi use-vrf management #}
 no nxapi ssl ciphers weak
-nxapi ssl protocols TLSv1.2
-no nxapi client certificate authentication
-nxapi idle-timeout 10
 xml server timeout 1200
 
 feature ssh
@@ -155,7 +164,6 @@ line vty
   access-class {{ bse.mgmt_acl[1]['acl_name'] }} in
 
 {####### Other settings such as resourse, roles, CoPP, RMON and callhome #######}
-icam monitor scale
 copp profile strict
 no system mode maintenance
 vdc {{ inventory_hostname }} id 1
@@ -166,7 +174,10 @@ vdc {{ inventory_hostname }} id 1
   limit-resource u6route-mem minimum 96 maximum 96
   limit-resource m4route-mem minimum 58 maximum 58
   limit-resource m6route-mem minimum 8 maximum 8
+{####### VERSIONS - Differences between NXOS versions 9.2.4 and 9.3.x, vdc has to lower in the config #######}
+{% if bse.adv.image != 'nxos.9.2.4.bin' %}
   limit-resource vni_bd minimum 4096 maximum 4096
+{% endif %}
 
 no priority-flow-control override-interface mode off
 rmon event 1 description FATAL(1) owner PMON@FATAL

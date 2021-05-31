@@ -4,7 +4,7 @@ This playbook will deploy a leaf and spine fabric and its related services in a 
 
 This came from my project for the [IPSpace Building Network Automation Solutions](https://www.ipspace.net/Building_Network_Automation_Solutions) course and was used in part when we were deploying Cisco 9k leaf and spine fabrics in our Data Centers. The playbook is structured in a way that it should hopefully not be too difficult to add templates to deploy leaf and spine fabrics for other vendors. My plan was to add Arista and Juniper but is unlikely to happen.
 
-I now am done with building DCs (bring on the :cloud:) and with this being on the edge of the limit of my programing knowledge I don't envisage making any future changes. If any of it is useful to you please do take it and mold it to your own needs. 
+I now am done with building DCs (bring on the :cloud:) and with this being on the edge of the limit of my programing knowledge I don't envisage making any future changes. If any of it is useful to you please do take it and mold it to your own needs.
 
 This README is intended to give enough information to understand the playbooks structure and run it. The variable files hold examples of a deployment with more information on what each variable does. For more detailed information about the playbook have a look at the series off posts I did about it on my [blog](https://theworldsgonemad.net/2021/automate-dc-pt1).
 
@@ -637,7 +637,7 @@ The base location for this directory can be changed using the `ans.dir_path` var
 
 ## Prerequisites
 
-The deployment has been tested on `NXOS 9.3(5)` using `ansible 2.10.6` and `Python 3.6.9`. Once the environment has been setup with all the packages installed run `napalm-ansible` to get the location of the napalm-ansible paths and add them to *ansible.cfg* under *[defaults]*.
+The deployment has been tested on NXOS 9.2(4) and NXOS 9.3(5) (in theory should be fine with 9.3(6) & 9.3(7)) using Ansible 2.10.6 and Python 3.6.9. See the Caveats section for the few nuances when running the different versions of code.
 
 ```bash
 git clone https://github.com/sjhloco/build_fabric.git
@@ -646,6 +646,8 @@ python3 -m venv ~/venv/venv_ansible2.10
 source ~/venv/venv_ansible2.10/bin/activate
 pip install -r build_fabric/requirements.txt
 ```
+
+Once the environment has been setup with all the packages installed run `napalm-ansible` to get the location of the napalm-ansible paths and add them to *ansible.cfg* under *[defaults]*.
 
 Before any configuration can be deployed using Ansible a few things need to be manually configured on all N9K devices:
 
@@ -683,7 +685,7 @@ ansible-playbook ssh_keys/ssh_key_add.yml -i ssh_keys/ssh_hosts
 
 ## Running playbook
 
-The device configuration is applied using Napalm with the differences always saved to *~/device_configs/diff/device_name.txt* and optionally printed to screen. Napalm *commit_changes* is set to *True* meaning that Ansible *check-mode* is used for *dry-runs*. It can take 3 to 4 minutes to deploy the full configuration when including the service roles so the Napalm default timeout has been increased to 240 seconds.
+The device configuration is applied using Napalm with the differences always saved to *~/device_configs/diff/device_name.txt* and optionally printed to screen. Napalm *commit_changes* is set to *True* meaning that Ansible *check-mode* is used for *dry-runs*. It can take upto 6 minutes to deploy the full configuration when including the service roles so the Napalm default timeout has been increased to 360 seconds. If it takes longer (N9Kv running 9.2(4) is very slow) Ansible will report the build as failed but it is likely the process is still running on the device so give it a minute and run the playbook again, it should pass and with no changes needed.
 
 Due to the declarative nature of the playbook and inheritance between roles there are only a certain number of combinations that the roles can be deployed in.
 
@@ -808,15 +810,17 @@ Post-validation is hierarchial as the addition of elements in the later roles ef
 
 When starting this project I used N9Kv on EVE-NG and later moved onto physical devices when we were deploying the data centers. vPC fabric peering does not work on the virtual devices so this was never added as an option in the playbook.
 
-As deployments are declarative and there are differences with physical devices you will need a few minor tweaks to the *bse_tmpl.j2* template as different hardware can have slightly different hidden base commands. The `system nve infra-vlans` command is required for infrastructure VLANs (OSPF over vPC peer link VLAN) and to run VLXAN over a VLAN but is not supported on N9Kv. For physical devices this line needs unhashing at the start of *bse_tmpl.j2* template.
+As deployments are declarative and there are differences with physical devices you will need a few minor tweaks to the *bse_tmpl.j2* template as different hardware can have slightly different hidden base commands. An example is the command `system nve infra-vlans`, it is required on physical devices (command doesnt exist on N9Kv) in order to use an SVI as an underlay interface (one that forwards/originates VXLAN-encapsulated traffic). Therefore on physical devices unhash this line in *bse_tmpl.j2*, it is used for the OSPF peering over the vPC link (VLAN2).
 
 ```jinja
 {# system nve infra-vlans {{ fbc.adv.mlag.peer_vlan }} #}
 ```
 
-Although they work on EVE-NG it is not perfect for running N9Kv. I originally started on `nxos.9.2.4` and although it is fairly stable in terms of features and uptime, the API can be very slow at times taking upto 10 minuets to deploy a device config. Sometimes after a deployment the API would stop responding (couldn't telnet on 443) but NXOS CLI said it was listening. To fix this you have disable and re-enable the *nxapi* feature. Removing the command `nxapi use-vrf management` seems to help to make the API more stable.
+The same applies for NXOS versions, it is only the base commands that will change (features commands stay the same across versions) so *if statements* are used in *bse_tmpl.j2* based on the `bse.adv.image` variable.
 
-I moved onto to NXOS `nxos.9.3.5` and although the API is faster and has more stability, there is a different issue around the interface module. When the N9Kv went to 9.3 the interfaces where moved to a separate module, module 1.
+Although they work on EVE-NG it is not perfect for running N9Kv. I originally started on `nxos.9.2.4` and although it is fairly stable in terms of features and uptime, the API can be very slow at times taking upto 10 minutes to deploy a device config. Sometimes after a deployment the API would stop responding (couldn't telnet on 443) but NXOS CLI said it was listening. To fix this you have to disable and re-enable the *nxapi* feature. Removing the command `nxapi use-vrf management` seems to have helped to make the API more stable.
+
+I moved onto to NXOS `nxos.9.3.5` and although the API is faster and more stability, there is a different issue around the interface module. When the N9Kv went to 9.3 the interfaces where moved to a separate module.
 
 ```none
 Mod Ports             Module-Type                      Model           Status
@@ -825,7 +829,7 @@ Mod Ports             Module-Type                      Model           Status
 27   0    Virtual Supervisor Module             N9K-vSUP              active *
 ```
 
-Once I get past five NXOS devices the interfaces module becomes unstable on the new devices, either randomly crashing or going into the *pwr-cycld* state at startup after the initial bootup tests.
+With 9.3(5), 9.3(6) and 9.3(7) on EVE-NG up to 5 or 6 N9Ks it is fine, however when you add any N9Ks (other device types are fine) things start to become unstable. New devices take an age to boot up and when they do their interface linecards normally fail and go into the *pwr-cycld* state.
 
 ```none
 Mod Ports             Module-Type                      Model           Status
@@ -838,4 +842,20 @@ Mod  Power-Status  Reason
 1    pwr-cycld      Unknown. Issue show system reset mod ...
 ```
 
-I have not been able to find a reason for this, it doesnt seem to be related to resources for either the virtual device or the EVE-NG box.
+This in turn makes other N9Ks unstable, some freezing and others randomly having the same linecard issue. Rebooting sometimes fixes it but due to the load times it is unworkable. I have not been able to find a reason for this, it doesn't seem to be related to resources for either the virtual device or the EVE-NG box.
+
+On in N9Kv 9.2(4) there is a bug whereas you cant have *'>'* in the name of the prefix-list in the route-map *match* statement. This name is set in the *service_route.yml* variables `svc_rte.adv.pl_name` and `svc_rte.adv.pl_metric_name`. The problem has been fixed in 9.3.
+
+```bash
+DC1-N9K-BGW01(config-route-map)# match ip address prefix-list PL_OSPF_BLU100->BGP_BLU
+Error: CLI DN creation failed substituting values. Path sys/rpm/rtmap-[RM_OSPF_BLU100-BGP_BLU]/ent-10/mrtdst/rsrtDstAtt-[sys/rpm/pfxlistv4-[PL_OSPF_BLU100->BGP_BLU]]
+```
+
+If you are running these playbooks on MAC you may get the following error when running post-validations:
+
+```bash
+objc[29159]: +[__NSPlaceholderDictionary initialize] may have been in progress in another thread when fork() was called.
+objc[29159]: +[__NSPlaceholderDictionary initialize] may have been in progress in another thread when fork() was called. We cannot safely call it or ignore it in the fork() child process. Crashing instead. Set a breakpoint on objc_initializeAfterForkError to debug.
+```
+
+Is the same behaviour as this older [ansible bug](https://github.com/ansible/ansible/issues/32499), the solution of adding `export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES` before running the post-validation playbook solved it for me.

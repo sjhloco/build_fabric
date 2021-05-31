@@ -484,8 +484,8 @@ class FilterModule(object):
             redist_track = defaultdict(list)                # Used to track redistribution occurrences
 
             # 1b. DFLT_VAL: Set default values if the switch, default_orig or tenant keys if are not specified in the process
-            proc.setdefault('tenant', 'global')
-            proc.setdefault('default_orig', None)       # Uses None as is blank if referenced in template (instead of 'always')
+            if proc.get('default_orig') == True:
+                proc['default_orig'] = None          # Uses None as is blank if referenced in template (instead of 'always')
 
             #1c. Set RID, matches on order of switches, for example first switch has first RID
             if proc.get('rid') != None:

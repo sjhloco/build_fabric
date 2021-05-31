@@ -12,7 +12,6 @@
     - vars/service_interface.yml      # All variables start with svc_intf
     - vars/service_route.yml          # All variables start with svc_rte
 
-
 ######################## 1. Validates the input data (in var_files) and creates the file structure ########################
   pre_tasks:
     # 1a. Validate that the required elements in the variable files are all defined and in the correct format
@@ -130,7 +129,7 @@
         provider: "{{ ans.creds_all }}"
         dev_os: "{{ ansible_network_os }}"
         # NXOS takes between 3 to 4 minutes to deploy all changes so default timeout needed increasing
-        timeout: 300
+        timeout: 360
         config_file: "{{ ans.dir_path }}/{{ inventory_hostname }}/config/config.cfg"
         commit_changes: True            # Set to true as use Ansible check_mode to do dry runs
         replace_config: True            # Replacing config rather than merging
@@ -152,7 +151,7 @@
         napalm_install_config:
           provider: "{{ ans.creds_all }}"
           dev_os: "{{ ansible_network_os }}"
-          timeout: 300                    # Needed as with default 60 will timeout before full rollback complete
+          timeout: 360                    # Needed as with default 60 will timeout before full rollback complete
           config_file: "{{ ans.dir_path }}/{{ inventory_hostname }}/config/rollback_config.txt"
           commit_changes: True            # Set to true as use Ansible check_mode to do dry runs
           replace_config: True            # Replacing config rather than merging

@@ -45,7 +45,7 @@
       - name: "POST_VAL >> Compliance check failed"
         fail:
           msg: "Non-compliant state encountered. Refer to the full report
-                'cat {{ ans.dir_path }}/reports/{{ inventory_hostname }}_compliance_report.json | python -m json.tool"
+                'cat {{ ans.dir_path }}/reports/{{ inventory_hostname }}_compliance_report.json | python -m json.tool'"
         when: not complies
       tags: [bse_fbc, bse_fbc_tnt, bse_fbc_tnt_intf, full]
 

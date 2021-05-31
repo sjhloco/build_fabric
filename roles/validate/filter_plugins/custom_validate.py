@@ -45,11 +45,15 @@ class FilterModule(object):
 
         # Feeds files into napalm_validate and produces a report
         for cmd, desired_results in desired_state.items():
-            try:
-                report[cmd] = validate.compare(desired_results, actual_state[cmd])
-            # If validation couldn't be run on a command adds skipped key to the cmd dictionary
-            except NotImplementedError:
-                report[cmd] = {"skipped": True, "reason": "NotImplemented"}
+            # Safe guard in case any empty desired_results, stops script failing
+            if desired_results == None:
+                pass
+            else:
+                try:
+                    report[cmd] = validate.compare(desired_results, actual_state[cmd])
+                # If validation couldn't be run on a command adds skipped key to the cmd dictionary
+                except NotImplementedError:
+                    report[cmd] = {"skipped": True, "reason": "NotImplemented"}
 
         # Results of compliance report (complies = validation result, skipped = validation didn't run)
         complies = all([each_cmpl.get("complies", True) for each_cmpl in report.values()])

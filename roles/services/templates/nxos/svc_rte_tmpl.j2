@@ -137,6 +137,20 @@ interface {{ intf }}
 {% endif %}{% endfor %}
 {%- endmacro -%}
 
+{## Create all the BGP peers ##}
+{% for vrf_name, vrf_content in flt_svc_rte[6].items() %}
+{# If global addr family it must be created first and needs 'router bgp'. Reason is that indentaion does not backward, stll adds in VRF  #}
+{% if vrf_name |lower == 'global' %}
+router bgp {{ fbc.route.bgp.as_num }}
+{{ macro_peers(vrf_content) }}
+{% endif %}{% endfor %}
+{# Re-terates the loop and adds config for all VRF addr-families  #}
+{% for vrf_name, vrf_content in flt_svc_rte[6].items() %}
+{% if vrf_name |lower != 'global' %}
+  vrf {{ vrf_name }}
+{{ macro_peers(vrf_content) | indent(width=2, first=True) }}
+{% endif %}{% endfor %}
+
 {## Create all BGP peer templates (groups) ##}
 router bgp {{ fbc.route.bgp.as_num }}
 {% for grp in flt_svc_rte[5].values() %}
@@ -166,18 +180,4 @@ router bgp {{ fbc.route.bgp.as_num }}
       route-map {{ grp.outbound_rm }} out
 {% endif %}{% if grp.next_hop_self  is defined  %}
       next-hop-self
-{% endif %}{% endfor %}
-
-{## Create all the BGP peers ##}
-{% for vrf_name, vrf_content in flt_svc_rte[6].items() %}
-{# If global addr family it must be created first and needs 'router bgp'. Reason is that indentaion does not backward, stll adds in VRF  #}
-{% if vrf_name |lower == 'global' %}
-router bgp {{ fbc.route.bgp.as_num }}
-{{ macro_peers(vrf_content) }}
-{% endif %}{% endfor %}
-{# Re-terates the loop and adds config for all VRF addr-families  #}
-{% for vrf_name, vrf_content in flt_svc_rte[6].items() %}
-{% if vrf_name |lower != 'global' %}
-  vrf {{ vrf_name }}
-{{ macro_peers(vrf_content) | indent(width=2, first=True) }}
 {% endif %}{% endfor %}

@@ -841,6 +841,8 @@ class FilterModule(object):
                 max_intf = int(fbc['num_intf']['leaf'].split(',')[1])
             elif dev_name['border'] in switch:
                 max_intf = int(fbc['num_intf']['border'].split(',')[1])
+            else:
+                max_intf = 1
             self.assert_equal_less(svc_intf_errors, len(intf), max_intf, "-svc_intf.intf.homed Are more defined interfaces ({}) than the maximum "\
                                                                          "number of interfaces ({}) on {}".format(len(intf), max_intf, switch))
 
@@ -913,8 +915,7 @@ class FilterModule(object):
                         asgn_intf = intf_range.pop(0)
                         all_intf_tnt.append((fbc['adv']['bse_intf'][intf_short + '_fmt'] + str(asgn_intf), each_intf_tnt[1]))
                 # 8. Creates dict of per switch (intf, tnt) tuples. If Loopback adds fabric loopbacks to the list of tuples
-                if intf_type == 'loopback':
-                    all_intf_tnt.extend(fbc_tnt_lp)
+                all_intf_tnt.extend(fbc_tnt_lp)
                 per_dev_intf_tnt[sw] = all_intf_tnt
             return per_dev_intf_tnt
         lp_per_dev_intf = sw_intf_tnt('loopback', 'lp')

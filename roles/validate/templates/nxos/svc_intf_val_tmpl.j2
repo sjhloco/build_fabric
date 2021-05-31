@@ -46,9 +46,9 @@ cmds:
 {{ super() }}
 {% for intf in flt_svc_intf %}{% if 'trunk' in intf.type %}
       {{ intf.intf_num  }}:
-        allowed_vlans: {{ intf.ip_vlan }}
+        allowed_vlans: "{{ intf.ip_vlan }}"
 {% if intf.po_num is not defined %}
-        stpfwd_vlans: {{ intf.ip_vlan }}
+        stpfwd_vlans: "{{ intf.ip_vlan }}"
 {% else %}
         stpfwd_vlans: none
 {% endif %}{% endif %}{% endfor %}
