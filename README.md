@@ -795,7 +795,7 @@ Post-validation is hierarchial as the addition of elements in the later roles ef
 
 | Ansible tag.       | Playbook action |
 |--------------------|-----------------|
-| `fbc_bse`          | Validates the configuration applied by the *base* and *fabric* roles
+| `bse_fbc`          | Validates the configuration applied by the *base* and *fabric* roles
 | `bse_fbc_tnt`      | Validates the configuration applied by the *base*, *fabric* and *tenant* roles
 | `bse_fbc_tnt_intf` | Validates the configuration applied by the *base*, *fabric*, *tenant* and *interfaces* roles
 | `full`             | Validates the configuration applied by the *base*, *fabric*, *tenant*, *interfaces* and *route* roles
@@ -829,7 +829,7 @@ Mod Ports             Module-Type                      Model           Status
 27   0    Virtual Supervisor Module             N9K-vSUP              active *
 ```
 
-With 9.3(5), 9.3(6) and 9.3(7) on EVE-NG up to 5 or 6 N9Ks it is fine, however when you add any N9Ks (other device types are fine) things start to become unstable. New devices take an age to boot up and when they do their interface linecards normally fail and go into the *pwr-cycld* state.
+With 9.3(5), 9.3(6) and 9.3(7) on EVE-NG up to 5 or 6 N9Ks it is fine, however when you add anymore N9Ks (other device types are fine) things start to become unstable. New devices take an age to boot up and when they do their interface linecards normally fail and go into the *pwr-cycld* state.
 
 ```none
 Mod Ports             Module-Type                      Model           Status
