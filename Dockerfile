@@ -42,11 +42,14 @@ RUN apt-get update && \
 RUN . $VENV/bin/activate && pip3 install -r ./build_fabric/requirements.txt
 
 # Patch the paths in the ansible.cfg to fit the image layout
-RUN sed -i \
+RUN sed \
 -e "s#^library = .*#library = $VENV/lib/$PYTHON/site-packages/napalm_ansible/modules#" \
 -e "s#^action_plugins = .*#action_plugins = $VENV/lib/$PYTHON/site-packages/napalm_ansible/plugins/action#" \
 -e "s#^python_interpreter = .*#python_interpreter = /usr/bin/env $VENV/bin/$PYTHON#" \
-$TARGET/ansible.cfg
+< $TARGET/ansible.cfg.template > $TARGET/ansible.cfg
+
+# Copy ansible config to /etc/ansible just in case we overwrite the volume $TARGET
+RUN mkdir -p /etc/ansible && cp $TARGET/ansible.cfg /etc/ansible
 
 # Include the virtual environment in the shell environment
 ENV PATH=$PATH:$VENV/bin
