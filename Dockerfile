@@ -7,7 +7,7 @@
 #
 # A copy of the repo is copied to /build_fabric,
 # the virtual environment with the python
-# dependencies in /build_fabric/venv
+# dependencies in /venv
 #
 # Run with:
 # $ ansible-playbook -i inv_from_vars_cfg.yml PB_build_fabric.yml
@@ -23,7 +23,7 @@ FROM debian:11
 # Target directory to copy stuff to
 ENV TARGET=/build_fabric
 # Virtual environment directory
-ENV VENV=/build_fabric/venv
+ENV VENV=/venv
 # The python binary/directory name
 ENV PYTHON=python3.9
 
