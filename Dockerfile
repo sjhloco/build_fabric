@@ -9,6 +9,12 @@
 # the virtual environment with the python
 # dependencies in /venv
 #
+# One-shot
+# --------
+# docker run -v$(pwd):/build_fabric -ti build_fabric ansible-playbook -i inv_from_vars_cfg.yml PB_build_fabric.yml
+#
+# In the container
+# ----------------
 # Run with:
 # $ ansible-playbook -i inv_from_vars_cfg.yml PB_build_fabric.yml
 #
