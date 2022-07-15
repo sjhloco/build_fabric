@@ -1,3 +1,20 @@
+#
+# Interactive Debian-based container for the
+# "build_fabric" Ansible setup procedure.
+#
+# Contains Ansible, Napalm, and the right
+# configuration to start.
+#
+# A copy of the repo is copied to /build_fabric,
+# the virtual environment with the python
+# dependencies in /build_fabric/venv
+#
+# Run with:
+# $ ansible-playbook -i inv_from_vars_cfg.yml PB_build_fabric.yml
+#
+# Validate with:
+# $ ansible-playbook -i inv_from_vars_cfg.yml PB_post_validate.yml
+#
 FROM debian:11
 
 # Target directory to copy stuff to
@@ -15,7 +32,10 @@ COPY . $TARGET
 # Install Debian / Python requirements
 RUN apt-get update && \
   apt-get install -y python3 python3-pip python3-virtualenv && \
-  virtualenv $VENV
+  virtualenv $VENV && \
+  apt-get autoremove -y && \
+  rm -rf /var/lib/apt/lists/* /var/cache/apt
+
 RUN . $VENV/bin/activate && pip3 install -r ./build_fabric/requirements.txt
 
 # Patch the paths in the ansible.cfg to fit the image layout
@@ -27,4 +47,8 @@ $TARGET/ansible.cfg
 
 # Include the virtual environment in the shell environment
 ENV PATH=$PATH:$VENV/bin
-ENV VIRTUAL_ENV=/build_fabric/venv
+ENV VIRTUAL_ENV=$VENV
+ENV ANSIBLE_INVENTORY_PLUGINS=$TARGET
+
+# chdir to $TARGET
+WORKDIR $TARGET
