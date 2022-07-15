@@ -15,6 +15,9 @@
 # Validate with:
 # $ ansible-playbook -i inv_from_vars_cfg.yml PB_post_validate.yml
 #
+# View inventory with:
+# $ ansible-inventory --playbook-dir=$(pwd) -i inv_from_vars_cfg.yml --graph
+
 FROM debian:11
 
 # Target directory to copy stuff to
